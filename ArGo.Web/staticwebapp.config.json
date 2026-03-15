@@ -1,19 +1,15 @@
 {
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/api/*", "/static/media/*", "/favicon.ico", "/*.{png,jpg,jpeg,gif,svg,js,css,ico}"]
+  },
   "routes": [
-    {
-      "route": "/app*",
-      "rewrite": "/index.html"
-    },
     {
       "route": "/:shortCode",
       "rewrite": "/api/redirect/:shortCode",
       "methods": [
         "GET"
       ]
-    },
-    {
-      "route": "/*",
-      "rewrite": "/index.html"
     }
   ]
 }
