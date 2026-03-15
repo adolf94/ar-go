@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/app'
+import { Route as ShortCodeRouteImport } from './routes/$shortCode'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppUrlShortenerRouteImport } from './routes/app/url-shortener'
@@ -19,6 +20,11 @@ import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/app.lazy').then((d) => d.Route))
+const ShortCodeRoute = ShortCodeRouteImport.update({
+  id: '/$shortCode',
+  path: '/$shortCode',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -35,20 +41,23 @@ const AppUrlShortenerRoute = AppUrlShortenerRouteImport.update({
   id: '/url-shortener',
   path: '/url-shortener',
   getParentRoute: () => AppRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/app/url-shortener.lazy').then((d) => d.Route),
+)
 const AppFileDropRoute = AppFileDropRouteImport.update({
   id: '/file-drop',
   path: '/file-drop',
   getParentRoute: () => AppRoute,
-} as any)
+} as any).lazy(() => import('./routes/app/file-drop.lazy').then((d) => d.Route))
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => AppRoute,
-} as any)
+} as any).lazy(() => import('./routes/app/dashboard.lazy').then((d) => d.Route))
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$shortCode': typeof ShortCodeRoute
   '/app': typeof AppRouteWithChildren
   '/app/dashboard': typeof AppDashboardRoute
   '/app/file-drop': typeof AppFileDropRoute
@@ -57,6 +66,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$shortCode': typeof ShortCodeRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/file-drop': typeof AppFileDropRoute
   '/app/url-shortener': typeof AppUrlShortenerRoute
@@ -65,6 +75,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$shortCode': typeof ShortCodeRoute
   '/app': typeof AppRouteWithChildren
   '/app/dashboard': typeof AppDashboardRoute
   '/app/file-drop': typeof AppFileDropRoute
@@ -75,16 +86,24 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/$shortCode'
     | '/app'
     | '/app/dashboard'
     | '/app/file-drop'
     | '/app/url-shortener'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/app/dashboard' | '/app/file-drop' | '/app/url-shortener' | '/app'
+  to:
+    | '/'
+    | '/$shortCode'
+    | '/app/dashboard'
+    | '/app/file-drop'
+    | '/app/url-shortener'
+    | '/app'
   id:
     | '__root__'
     | '/'
+    | '/$shortCode'
     | '/app'
     | '/app/dashboard'
     | '/app/file-drop'
@@ -94,6 +113,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ShortCodeRoute: typeof ShortCodeRoute
   AppRoute: typeof AppRouteWithChildren
 }
 
@@ -104,6 +124,13 @@ declare module '@tanstack/react-router' {
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$shortCode': {
+      id: '/$shortCode'
+      path: '/$shortCode'
+      fullPath: '/$shortCode'
+      preLoaderRoute: typeof ShortCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -162,6 +189,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ShortCodeRoute: ShortCodeRoute,
   AppRoute: AppRouteWithChildren,
 }
 export const routeTree = rootRouteImport
