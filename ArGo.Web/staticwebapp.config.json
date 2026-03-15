@@ -10,11 +10,20 @@
   },
   "routes": [
     {
-      "route": "/:shortCode",
-      "rewrite": "/api/redirect/:shortCode",
-      "methods": [
-        "GET"
+      "route": "/app*",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/api/*",
+      "allowedRoles": [
+        "anonymous",
+        "authenticated"
       ]
+    },
+    {
+      "route": "^/(?!app)([^/.]+)$",
+      "redirect": "/api/redirect/$1",
+      "statusCode": 302
     }
   ]
 }
