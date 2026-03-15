@@ -20,12 +20,6 @@ jobs:
           file: ArGo.Web/public/config.json
           fields: '{"api":"${{ vars.API }}", "redirectUri":"${{ vars.REDIRECT_URI }}", "authUri":"${{ vars.AUTH_API }}"}'
       
-      - name: Update SWA JSON
-        uses: restackio/update-json-file-action@2.1
-        with:
-          file: ArGo.Web/staticwebapp.config.json
-          # Note: '2' is the index of the route in the 'routes' array
-          fields: '{"routes.2.redirect":"${{ vars.API }}/:shortCode"}'
           
       - name: Move/Rename config.json to js
         run: |
@@ -44,7 +38,7 @@ jobs:
           ###### Repository/Build Configurations - These values can be configured to match your app requirements. ######
           # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
           app_location: "./ArGo.Web" # App source code path
-          api_location: "" # Api source code path - optional
+          api_location: "./ArGo.Redirector" # Python redirector path
           output_location: "dist" # Built app content directory - optional
           ###### End of Repository/Build Configurations ######
 

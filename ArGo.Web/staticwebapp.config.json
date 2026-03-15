@@ -1,19 +1,19 @@
 {
-  "navigationFallback": {
-    "rewrite": "/index.html"
-  },
   "routes": [
     {
       "route": "/app*",
       "rewrite": "/index.html"
     },
     {
-      "route": "/api/:shortCode",
+      "route": "/:shortCode",
+      "rewrite": "/api/redirect/:shortCode",
       "methods": [
-        "get"
-      ],
-      "redirect": "https://ar-go-arhse0cmgba4h9cg.eastasia-01.azurewebsites.net/api/:shortCode",
-      "statusCode": 302
+        "GET"
+      ]
+    },
+    {
+      "route": "/*",
+      "rewrite": "/index.html"
     }
   ]
 }
