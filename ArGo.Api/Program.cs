@@ -10,6 +10,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using Azure.Identity;
+
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
@@ -35,17 +37,37 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =
 });
 // Cosmos DB via EF Core 9
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseCosmos(
-        appConfig.CosmosEndpoint,
-        appConfig.CosmosKey,
-        appConfig.DatabaseName
-    )
-);
+{
+    if (string.IsNullOrEmpty(appConfig.CosmosKey))
+    {
+        options.UseCosmos(
+            appConfig.CosmosEndpoint,
+            new DefaultAzureCredential(),
+            appConfig.DatabaseName
+        );
+    }
+    else
+    {
+        options.UseCosmos(
+            appConfig.CosmosEndpoint,
+            appConfig.CosmosKey,
+            appConfig.DatabaseName
+        );
+    }
+});
 
 // Azure Blob Storage
 builder.Services.AddSingleton(_ =>
-    new BlobServiceClient(appConfig.AzureStorage)
-);
+{
+    if (Uri.TryCreate(appConfig.AzureStorage, UriKind.Absolute, out var blobUri) &&
+        (blobUri.Scheme == Uri.UriSchemeHttp || blobUri.Scheme == Uri.UriSchemeHttps))
+    {
+        return new BlobServiceClient(blobUri, new DefaultAzureCredential());
+    }
+
+    return new BlobServiceClient(appConfig.AzureStorage);
+});
+
 
 
 // Application Services

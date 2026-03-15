@@ -1,7 +1,7 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 
-namespace ArGo.Api.Utilities
+namespace ArGo.Utilities
 {
     public class AesOperation
     {

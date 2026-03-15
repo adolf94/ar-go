@@ -13,8 +13,11 @@
     },
     {
       "route": "/:shortCode",
-      "rewrite": "/api/:shortCode",
-      "methods": ["GET"]
+      "redirect": "https://<your-functions-app>.azurewebsites.net/api/:shortCode",
+      "statusCode": 302,
+      "methods": [
+        "GET"
+      ]
     }
   ]
 }

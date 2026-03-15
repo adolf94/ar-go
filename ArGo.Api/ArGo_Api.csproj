@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Azure.Identity" Version="1.19.0" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.27.0" />
     <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
     <!-- Application Insights isn't enabled by default. See https://aka.ms/AAt8mw4. -->

@@ -1,6 +1,6 @@
-webConfig = {
+{
     "api": "https://<your-functions-app>.azurewebsites.net/api",
     "clientId": "929828408348-sq488sibic3oquur1ov5ke3jos7sgfmv.apps.googleusercontent.com",
-    "redirectUri": window.location.origin,
+    "redirectUri": "https://go.adolfrey.com/app",
     "authUri": "https://<your-functions-app>.azurewebsites.net/api"
 }
