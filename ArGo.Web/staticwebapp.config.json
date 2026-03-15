@@ -5,7 +5,10 @@
   "routes": [
     {
       "route": "/api/*",
-      "allowedRoles": ["anonymous", "authenticated"]
+      "allowedRoles": [
+        "anonymous",
+        "authenticated"
+      ]
     },
     {
       "route": "/app",
@@ -13,11 +16,11 @@
     },
     {
       "route": "/:shortCode",
-      "redirect": "https://<your-functions-app>.azurewebsites.net/api/:shortCode",
-      "statusCode": 302,
       "methods": [
-        "GET"
-      ]
+        "get"
+      ],
+      "redirect": "https://ar-go-arhse0cmgba4h9cg.eastasia-01.azurewebsites.net/api/:shortCode",
+      "statusCode": 302
     }
   ]
 }
