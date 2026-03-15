@@ -5,13 +5,6 @@
       "rewrite": "/index.html"
     },
     {
-      "route": "/:shortCode",
-      "rewrite": "/api/redirect/:shortCode",
-      "methods": [
-        "GET"
-      ]
-    },
-    {
       "route": "/*",
       "rewrite": "/index.html"
     }
