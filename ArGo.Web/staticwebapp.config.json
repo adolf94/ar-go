@@ -1,0 +1,20 @@
+{
+  "navigationFallback": {
+    "rewrite": "/index.html"
+  },
+  "routes": [
+    {
+      "route": "/api/*",
+      "allowedRoles": ["anonymous", "authenticated"]
+    },
+    {
+      "route": "/app",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/:shortCode",
+      "rewrite": "/api/:shortCode",
+      "methods": ["GET"]
+    }
+  ]
+}
