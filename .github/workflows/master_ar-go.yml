@@ -4,13 +4,10 @@
 name: Build and deploy dotnet core project to Azure Function App - ar-go
 
 on:
-  push:
-    branches:
-      - master
   workflow_dispatch:
 
 env:
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.' # set this to the path to your web app project, defaults to the repository root
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: './ArGo.Api' # set this to the path to your web app project, defaults to the repository root
   DOTNET_VERSION: '9.0' # set this to the dotnet version to use
 
 jobs:
