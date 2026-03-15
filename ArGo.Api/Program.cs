@@ -38,7 +38,7 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =
 // Cosmos DB via EF Core 9
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    if (string.IsNullOrEmpty(appConfig.CosmosKey))
+    if (string.IsNullOrWhiteSpace(appConfig.CosmosKey))
     {
         options.UseCosmos(
             appConfig.CosmosEndpoint,
