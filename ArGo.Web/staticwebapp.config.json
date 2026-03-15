@@ -15,7 +15,7 @@
       "rewrite": "/index.html"
     },
     {
-      "route": "/:shortCode",
+      "route": "/api/:shortCode",
       "methods": [
         "get"
       ],
