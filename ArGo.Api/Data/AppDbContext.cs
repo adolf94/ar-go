@@ -5,10 +5,13 @@ namespace ArGo.Api.Data;
 
 public class AppDbContext : DbContext
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) {
-
-				base.Database.EnsureCreatedAsync().Wait();
-		}
+    public AppDbContext(DbContextOptions<AppDbContext> options, ArGo.Utilities.AppConfig appConfig) : base(options)
+    {
+        if (!string.IsNullOrWhiteSpace(appConfig.CosmosKey))
+        {
+            Database.EnsureCreatedAsync().Wait();
+        }
+    }
 
     public required DbSet<LinkMetadata> Links { get; set; }
     public required DbSet<FileMetadata> FileMetadatas { get; set; }
@@ -27,7 +30,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<DeletedLinkHistory>()
             .ToContainer("ArGoHistory")
             .HasPartitionKey(x => x.Id);
-            
+
         base.OnModelCreating(modelBuilder);
     }
 }
