@@ -18,7 +18,7 @@ jobs:
         uses: restackio/update-json-file-action@2.1
         with:
           file: ArGo.Web/public/config.json
-          fields: '{"api":"${{ vars.API }}", "redirectUri":"${{ vars.REDIRECT_URI }}", "authUri":"${{ vars.AUTH_API }}"}'
+          fields: '{"api":"${{ vars.API }}", "redirectUri":"${{ vars.REDIRECT_URI }}", "authUri":"${{ vars.AUTH_API }}", "clientId":"${{ vars.CLIENT_ID }}", "scope":"${{ vars.SCOPE }}"}'
       
           
       - name: Move/Rename config.json to js
