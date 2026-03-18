@@ -24,26 +24,47 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const mapOidcUser = (oidcUser: OidcUser): User => {
   const profile = oidcUser.profile;
-  const rawRoles = (profile as any)['roles'] || (profile as any)['role'];
-  const roles: string[] = rawRoles
-    ? Array.isArray(rawRoles)
-      ? rawRoles
-      : [rawRoles]
-    : [];
+  
+  // Collect all potential permission claims
+  // Roles are usually in 'roles' or 'role' in the ID Token (profile)
+  // Scopes are in 'scope' or 'scp' in either ID Token or Access Token response
+  const rawItems = [
+    (profile as any)['roles'],
+    (profile as any)['role'],
+    (profile as any)['scp'],
+    (profile as any)['scope'],
+    oidcUser.scope // Granted scopes from the Access Token response
+  ];
 
-  // Extract scopes from roles (matching backend logic: api://audience/scope)
-  const audience = window.webConfig.clientId === 'ar-go-web' ? 'ar-go-api' : ''; // Fallback or logic to get audience
+  const allPermissions: string[] = [];
+  rawItems.forEach(item => {
+    if (!item) return;
+    if (Array.isArray(item)) {
+      allPermissions.push(...item.map(String));
+    } else if (typeof item === 'string') {
+      // Split space-separated strings (common for 'scope' claims)
+      allPermissions.push(...item.split(' ').filter(Boolean));
+    }
+  });
+
+  // Extract scopes following backend logic: api://audience/scope -> scope
+  const audience = window.webConfig.clientId === 'ar-go-web' ? 'ar-go-api' : '';
   const prefix = `api://${audience}/`;
-  const scopes = roles
-    .filter(r => r.startsWith('api://'))
-    .map(r => r.startsWith(prefix) ? r.substring(prefix.length) : r);
+  
+  const scopes = allPermissions
+    .filter(p => p.startsWith('api://'))
+    .map(p => p.startsWith(prefix) ? p.substring(prefix.length) : p);
+
+  // Clean and deduplicate
+  const uniqueScopes = Array.from(new Set(scopes));
+  const uniqueRoles = Array.from(new Set(allPermissions.filter(p => !p.includes('://') || p.startsWith('api://'))));
 
   return {
     email: profile.email ?? '',
     name: profile.name ?? '',
     picture: (profile as any)['picture'] ?? '',
-    roles,
-    scopes
+    roles: uniqueRoles,
+    scopes: uniqueScopes
   };
 };
 

@@ -3,7 +3,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 export const Route = createFileRoute('/app/')({
   beforeLoad: () => {
     throw redirect({
-      to: '/app/file-drop',
+      to: '/app/url-shortener',
       replace: true,
     })
   },
