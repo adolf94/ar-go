@@ -4,8 +4,8 @@ const createUserManager = () =>
   new UserManager({
     authority: window.webConfig.authUri,
     client_id: window.webConfig.clientId,
-    redirect_uri: window.location.origin + '/auth/callback',
-    popup_redirect_uri: window.location.origin + '/',
+    redirect_uri: window.webConfig.redirectUri || window.location.origin + '/auth/callback',
+    popup_redirect_uri: window.webConfig.redirectUri || window.location.origin + '/',
     response_type: 'code',
     scope: window.webConfig.scope,
     userStore: new WebStorageStateStore({ store: window.sessionStorage }),

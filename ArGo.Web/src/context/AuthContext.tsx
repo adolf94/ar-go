@@ -12,7 +12,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: () => Promise<void>;
+  login: (options?: { useRedirect?: boolean }) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -55,6 +55,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const restore = async () => {
       try {
+        // Check if we're coming back from a redirect login
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        const state = params.get('state');
+
+        // Only handle redirect if there's no opener (popups have openers)
+        if (!window.opener && code && state) {
+          try {
+            console.log('Handling redirect callback...');
+            await getUserManager().signinRedirectCallback();
+            // Clear URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+          } catch (err) {
+            console.error('Redirect callback failed:', err);
+          }
+        }
+
         const oidcUser = await getUserManager().getUser();
         if (oidcUser && !oidcUser.expired) {
           setUser(mapOidcUser(oidcUser));
@@ -100,9 +117,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-
-  const login = async () => {
+  const login = async (options?: { useRedirect?: boolean }) => {
     try {
+      // Social In-app Browsers (FB Messenger, Instagram) often block popups
+      const ua = navigator.userAgent || navigator.vendor || (window as any).opera;
+      const isSocialInApp = /FBAN|FBAV|Instagram|Messenger|WhatsApp/i.test(ua);
+      const isIOS = /iPad|iPhone|iPod/.test(ua) && !(window as any).MSStream;
+      
+      // Force redirect if matches social in-app or if explicitly requested
+      if (options?.useRedirect || isSocialInApp || isIOS) {
+        console.log('Using signinRedirect for this environment');
+        await getUserManager().signinRedirect();
+        return;
+      }
+
+      console.log('Using signinPopup');
       const oidcUser = await getUserManager().signinPopup();
       const mapped = mapOidcUser(oidcUser);
       setUser(mapped);
