@@ -40,7 +40,7 @@ public class UploadFunction
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "metadata")] HttpRequest req)
     {
         if (!_currentUser.IsAuthenticated) return new UnauthorizedResult();
-        if (!_currentUser.IsAuthorized("go_user")) return new StatusCodeResult(StatusCodes.Status403Forbidden);
+        if (!_currentUser.IsAuthorized("user", [AuthorizeLookUp.Scope])) return new StatusCodeResult(StatusCodes.Status403Forbidden);
 
         string? url = req.Query["url"];
 
@@ -58,7 +58,7 @@ public class UploadFunction
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "upload")] HttpRequest req)
     {
         if (!_currentUser.IsAuthenticated) return new UnauthorizedResult();
-        if (!_currentUser.IsAuthorized("go_user")) return new StatusCodeResult(StatusCodes.Status403Forbidden);
+        if (!_currentUser.IsAuthorized("files:create")) return new StatusCodeResult(StatusCodes.Status403Forbidden);
 
         var ct = req.ContentType ?? "";
 
@@ -137,7 +137,7 @@ public class UploadFunction
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "shorten")] HttpRequest req)
     {
         if (!_currentUser.IsAuthenticated) return new UnauthorizedResult();
-        if (!_currentUser.IsAuthorized("go_user")) return new StatusCodeResult(StatusCodes.Status403Forbidden);
+        if (!_currentUser.IsAuthorized()) return new StatusCodeResult(StatusCodes.Status403Forbidden);
 
         var body = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonSerializer.Deserialize<JsonElement>(body);
@@ -189,7 +189,7 @@ public class UploadFunction
         string fileId)
     {
         if (!_currentUser.IsAuthenticated) return new UnauthorizedResult();
-        if (!_currentUser.IsAuthorized("go_user")) return new StatusCodeResult(StatusCodes.Status403Forbidden);
+        if (!_currentUser.IsAuthorized()) return new StatusCodeResult(StatusCodes.Status403Forbidden);
 
         var body = await new StreamReader(req.Body).ReadToEndAsync();
         var data = string.IsNullOrWhiteSpace(body) ? default : JsonSerializer.Deserialize<JsonElement>(body);
@@ -243,7 +243,7 @@ public class UploadFunction
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "my-items")] HttpRequest req)
     {
         if (!_currentUser.IsAuthenticated) return new UnauthorizedResult();
-        if (!_currentUser.IsAuthorized("go_user")) return new StatusCodeResult(StatusCodes.Status403Forbidden);
+        if (!_currentUser.IsAuthorized()) return new StatusCodeResult(StatusCodes.Status403Forbidden);
 
         var userId = _currentUser.UserId.ToString();
 
@@ -259,7 +259,7 @@ public class UploadFunction
         string shortCode)
     {
         if (!_currentUser.IsAuthenticated) return new UnauthorizedResult();
-        if (!_currentUser.IsAuthorized("go_user")) return new StatusCodeResult(StatusCodes.Status403Forbidden);
+        if (!_currentUser.IsAuthorized()) return new StatusCodeResult(StatusCodes.Status403Forbidden);
 
         var userId = _currentUser.UserId.ToString();
 

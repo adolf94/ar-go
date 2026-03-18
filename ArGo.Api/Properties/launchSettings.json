@@ -2,7 +2,7 @@
   "profiles": {
     "ArGo_Api": {
       "commandName": "Project",
-      "commandLineArgs": "--port 7151",
+      "commandLineArgs": "--port 7071",
       "launchBrowser": false
     }
   }

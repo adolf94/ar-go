@@ -17,9 +17,9 @@ public class CleanupTimerFunction
         _logger = logger;
     }
 
-    // Runs every 30 minutes
+    // Runs every 6 hours
     [Function(nameof(CleanupTimerFunction))]
-    public async Task Run([TimerTrigger("0 */30 * * * *")] TimerInfo timerInfo)
+    public async Task Run([TimerTrigger("0 0 */6 * * *")] TimerInfo timerInfo)
     {
         _logger.LogInformation("Cleanup timer triggered at: {Time}", DateTime.UtcNow);
         await _cleanupService.ProcessExpiredFilesAsync();

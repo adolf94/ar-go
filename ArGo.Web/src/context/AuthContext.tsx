@@ -1,102 +1,138 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { proxyLogin } from '../repositories/authRepository';
+import type { User as OidcUser } from 'oidc-client-ts';
+import { getUserManager } from '../auth/userManager';
 
 interface User {
   email: string;
   name: string;
   picture: string;
   roles?: string[];
+  scopes: string[];
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (googleResponse: any) => Promise<void>;
+  login: () => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
   isLoading: boolean;
+  accessToken: string | null;
+  hasScope: (scope: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const mapOidcUser = (oidcUser: OidcUser): User => {
+  const profile = oidcUser.profile;
+  const rawRoles = (profile as any)['roles'] || (profile as any)['role'];
+  const roles: string[] = rawRoles
+    ? Array.isArray(rawRoles)
+      ? rawRoles
+      : [rawRoles]
+    : [];
+
+  // Extract scopes from roles (matching backend logic: api://audience/scope)
+  const audience = window.webConfig.clientId === 'ar-go-web' ? 'ar-go-api' : ''; // Fallback or logic to get audience
+  const prefix = `api://${audience}/`;
+  const scopes = roles
+    .filter(r => r.startsWith('api://'))
+    .map(r => r.startsWith(prefix) ? r.substring(prefix.length) : r);
+
+  return {
+    email: profile.email ?? '',
+    name: profile.name ?? '',
+    picture: (profile as any)['picture'] ?? '',
+    roles,
+    scopes
+  };
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('argo_user');
-    const hasToken = localStorage.getItem('id_token') || sessionStorage.getItem('access_token');
-    
-    if (savedUser && hasToken) {
-      setUser(JSON.parse(savedUser));
-    }
-    setIsLoading(false);
+    const restore = async () => {
+      try {
+        const oidcUser = await getUserManager().getUser();
+        if (oidcUser && !oidcUser.expired) {
+          setUser(mapOidcUser(oidcUser));
+          setAccessToken(oidcUser.access_token);
+          sessionStorage.setItem('access_token', oidcUser.access_token);
+          if (oidcUser.refresh_token) {
+            localStorage.setItem('refresh_token', oidcUser.refresh_token);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to restore session:', e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    restore();
+
+    // Keep React state in sync when oidc-client-ts silently refreshes the token
+    const onUserLoaded = (oidcUser: OidcUser) => {
+      setUser(mapOidcUser(oidcUser));
+      setAccessToken(oidcUser.access_token);
+      sessionStorage.setItem('access_token', oidcUser.access_token);
+      if (oidcUser.refresh_token) {
+        localStorage.setItem('refresh_token', oidcUser.refresh_token);
+      }
+    };
+
+    const onSilentRenewError = (error: Error) => {
+      console.error('Silent renew failed:', error);
+      // Token couldn't be refreshed — clear state so user is prompted to log in
+      setUser(null);
+      setAccessToken(null);
+      sessionStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+    };
+
+    getUserManager().events.addUserLoaded(onUserLoaded);
+    getUserManager().events.addSilentRenewError(onSilentRenewError);
+
+    return () => {
+      getUserManager().events.removeUserLoaded(onUserLoaded);
+      getUserManager().events.removeSilentRenewError(onSilentRenewError);
+    };
   }, []);
 
-  const decodeIdToken = (token: string) => {
+
+  const login = async () => {
     try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
-          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join(''));
-      const decoded = JSON.parse(jsonPayload);
-      
-      // Normalize roles to an array
-      if (decoded.roles) {
-        decoded.roles = Array.isArray(decoded.roles) ? decoded.roles : [decoded.roles];
-      } else {
-        decoded.roles = [];
-      }
-      
-      return decoded;
-    } catch (e) {
-      console.error('Failed to decode ID Token', e);
-      return null;
-    }
-  };
-
-  const login = async (googleResponse: any) => {
-    try {
-      setIsLoading(true);
-      const data = await proxyLogin(googleResponse);
-      
-      // Store tokens according to requested pattern
-      window.localStorage.setItem("refresh_token", data.refresh_token);
-      window.localStorage.setItem("id_token", data.id_token);
-      window.sessionStorage.setItem("access_token", data.access_token);
-
-      // Decode ID token to get user info
-      const decoded = decodeIdToken(data.id_token);
-      
-      if (decoded) {
-        const userData: User = {
-          email: decoded.email,
-          name: decoded.name,
-          picture: decoded.picture,
-          roles: decoded.roles
-        };
-
-        setUser(userData);
-        localStorage.setItem('argo_user', JSON.stringify(userData));
+      const oidcUser = await getUserManager().signinPopup();
+      const mapped = mapOidcUser(oidcUser);
+      setUser(mapped);
+      setAccessToken(oidcUser.access_token);
+      sessionStorage.setItem('access_token', oidcUser.access_token);
+      if (oidcUser.refresh_token) {
+        localStorage.setItem('refresh_token', oidcUser.refresh_token);
       }
     } catch (error) {
       console.error('Login failed:', error);
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const logout = () => {
+    getUserManager().removeUser();
     setUser(null);
-    localStorage.removeItem('argo_user');
+    setAccessToken(null);
+    sessionStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('id_token');
-    sessionStorage.removeItem('access_token');
+    localStorage.removeItem('argo_user');
+  };
+
+  const hasScope = (scope: string) => {
+    return user?.scopes.some(s => s.toLowerCase() === scope.toLowerCase()) ?? false;
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user, isLoading, accessToken, hasScope }}>
       {children}
     </AuthContext.Provider>
   );

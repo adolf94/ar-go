@@ -9,12 +9,13 @@ namespace ArGo.Utilities
         public string AzureStorage { get; set; } = string.Empty;
         public string AuthUrl { get; set; } = string.Empty;
 
-        public JwtConfiguration JwtConfig { get; set; } = new();
+        public JwtConfiguration ArAuthConfig { get; set; } = new();
     }
     public class JwtConfiguration
     {
-        public string Issuer { get; set; }
-        public string Audience { get; set; }
-        public string SecretKey { get; set; }
+        public string Authority { get; set; } = string.Empty;
+        public string Audience { get; set; } = string.Empty;
+        public string Scope { get; set; } = string.Empty;
     }
+
 }

@@ -1,5 +1,6 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
 import dayjs from 'dayjs';
+import { getUserManager } from '../auth/userManager';
 
 // --- Token Management ---
 let isRefreshing = false;
@@ -29,51 +30,49 @@ const decodeJwt = (token: string) => {
   }
 };
 
-const getValidToken = async () => {
+const getValidToken = async (): Promise<string | null> => {
   const accessToken = window.sessionStorage.getItem('access_token');
-  const idToken = window.localStorage.getItem('id_token');
-  const refreshToken = window.localStorage.getItem('refresh_token');
 
+  // Return current token if it's still valid (>1 min remaining)
   if (accessToken) {
     const decoded = decodeJwt(accessToken);
-    if (decoded && decoded.exp) {
+    if (decoded?.exp) {
       const isExpired = dayjs().add(1, 'minute').isAfter(dayjs(decoded.exp * 1000));
       if (!isExpired) return accessToken;
     }
   }
 
-  if (refreshToken) {
-    if (isRefreshing) {
-      return new Promise((resolve, reject) => {
-        failedQueue.push({ resolve, reject });
-      });
-    }
-
-    isRefreshing = true;
-    try {
-      // Import proxyRefresh dynamically to avoid circular dependency
-      const { proxyRefresh } = await import('../repositories/authRepository');
-      const data = await proxyRefresh(refreshToken);
-      window.sessionStorage.setItem('access_token', data.access_token);
-      window.localStorage.setItem('refresh_token', data.refresh_token);
-      window.localStorage.setItem('id_token', data.id_token);
-      
-      processQueue(null, data.access_token);
-      return data.access_token;
-    } catch (err) {
-      processQueue(err, null);
-      // Clear tokens on failed refresh to force re-authentication
-      window.sessionStorage.removeItem('access_token');
-      window.localStorage.removeItem('refresh_token');
-      window.localStorage.removeItem('id_token');
-      window.localStorage.removeItem('argo_user');
-      return null;
-    } finally {
-      isRefreshing = false;
-    }
+  // Token is expired or missing — attempt silent refresh via oidc-client-ts
+  if (isRefreshing) {
+    return new Promise((resolve, reject) => {
+      failedQueue.push({ resolve, reject });
+    });
   }
 
-  return accessToken || idToken; 
+  isRefreshing = true;
+  try {
+    const oidcUser = await getUserManager().signinSilent();
+    if (oidcUser) {
+      window.sessionStorage.setItem('access_token', oidcUser.access_token);
+      if (oidcUser.refresh_token) {
+        window.localStorage.setItem('refresh_token', oidcUser.refresh_token);
+      }
+      processQueue(null, oidcUser.access_token);
+      return oidcUser.access_token;
+    }
+    processQueue(null, null);
+    return null;
+  } catch (err) {
+    processQueue(err, null);
+    // Clear tokens on failed refresh — user will need to log in again
+    window.sessionStorage.removeItem('access_token');
+    window.localStorage.removeItem('refresh_token');
+    window.localStorage.removeItem('id_token');
+    window.localStorage.removeItem('argo_user');
+    return null;
+  } finally {
+    isRefreshing = false;
+  }
 };
 
 const apiClient: AxiosInstance = axios.create({
@@ -90,9 +89,7 @@ apiClient.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 apiClient.interceptors.response.use(

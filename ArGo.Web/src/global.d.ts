@@ -3,6 +3,7 @@ interface WebConfig {
   clientId: string;
   redirectUri: string;
   authUri: string;
+  scope: string;
 }
 
 interface Window {

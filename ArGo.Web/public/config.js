@@ -1,6 +1,7 @@
 webConfig = {
-    "api": "https://<your-functions-app>.azurewebsites.net/api",
-    "clientId": "929828408348-sq488sibic3oquur1ov5ke3jos7sgfmv.apps.googleusercontent.com",
-    "redirectUri": window.location.origin,
-    "authUri": "https://<your-functions-app>.azurewebsites.net/api"
+    "api": "http://localhost:7071/api",
+    "redirectUri": "https://localhost:5174/",
+    "clientId": "ar-go-web",
+    "authUri": "https://localhost:5173/api",
+    "scope": "openid profile email offline_access api://ar-go-api/user"
 }

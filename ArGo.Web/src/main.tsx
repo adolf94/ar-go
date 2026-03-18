@@ -3,29 +3,33 @@ import ReactDOM from 'react-dom/client'
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { GoogleOAuthProvider } from '@react-oauth/google'
 import { theme } from './theme'
 import { AuthProvider } from './context/AuthContext'
 import './index.css'
 
 import { createRouter, RouterProvider } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
+import { getUserManager } from './auth/userManager'
 
-// Create a new router instance
-const router = createRouter({ routeTree })
-
-// Register the router instance for type safety
+// Register router types for type safety
 declare module '@tanstack/react-router' {
   interface Register {
-    router: typeof router
+    router: ReturnType<typeof createRouter<typeof routeTree>>
   }
 }
 
-const queryClient = new QueryClient()
+// If this page was opened as a popup for the OIDC flow, handle the callback
+// and stop — the popup will close itself after posting the result to the opener.
+if (window.opener && window.location.search.includes('code=')) {
+  getUserManager().signinPopupCallback().catch((err) => {
+    console.error('Popup callback error:', err);
+  });
+} else {
+  const router = createRouter({ routeTree })
+  const queryClient = new QueryClient()
 
-ReactDOM.createRoot(document.getElementById('app')!).render(
-  <React.StrictMode>
-    <GoogleOAuthProvider clientId={window.webConfig.clientId}>
+  ReactDOM.createRoot(document.getElementById('app')!).render(
+    <React.StrictMode>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider theme={theme}>
           <CssBaseline />
@@ -34,6 +38,6 @@ ReactDOM.createRoot(document.getElementById('app')!).render(
           </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>
-    </GoogleOAuthProvider>
-  </React.StrictMode>,
-)
+    </React.StrictMode>,
+  )
+}

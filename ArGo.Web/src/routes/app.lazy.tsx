@@ -3,20 +3,42 @@ import { Container, Box, Typography, Paper, Tabs, Tab, Avatar, IconButton, Toolt
 import { CloudUpload, Link as LinkIcon, Dashboard, Logout } from '@mui/icons-material';
 import { Login } from '../components/Login';
 import { useAuth } from '../context/AuthContext';
+import { useEffect } from 'react';
 
 export const Route = createLazyFileRoute('/app')({
   component: AppLayout,
 })
 
 function AppLayout() {
-  const { user, logout, isAuthenticated, isLoading } = useAuth();
+  const { user, logout, isAuthenticated, isLoading, hasScope } = useAuth();
   const navigate = useNavigate();
   const routerState = useRouterState();
-  
-  // Map current path to tab index
-  const tabPaths = ['/app/file-drop', '/app/url-shortener', '/app/dashboard'];
+
+  const canUpload = hasScope('files:create');
+
+  // Define full tab list
+  const allTabs = [
+    { path: '/app/file-drop', label: 'File Drop', icon: <CloudUpload />, requiredScope: 'files:create' },
+    { path: '/app/url-shortener', label: 'Shorten URL', icon: <LinkIcon /> },
+    { path: '/app/dashboard', label: 'My Items', icon: <Dashboard /> }
+  ];
+
+  // Filter tabs by permission
+  const tabPaths = allTabs
+    .filter(tab => !tab.requiredScope || hasScope(tab.requiredScope))
+    .map(tab => tab.path);
+
+  const visibleTabs = allTabs.filter(tab => !tab.requiredScope || hasScope(tab.requiredScope));
+
   const currentPath = routerState.location.pathname;
   const activeTab = tabPaths.indexOf(currentPath) === -1 ? 0 : tabPaths.indexOf(currentPath);
+
+  // Effect to redirect away from restricted pages if session changes or direct URL access
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && currentPath === '/app/file-drop' && !canUpload) {
+      navigate({ to: '/app/url-shortener', replace: true });
+    }
+  }, [isLoading, isAuthenticated, currentPath, canUpload, navigate]);
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     navigate({ to: tabPaths[newValue] });
@@ -75,9 +97,9 @@ function AppLayout() {
             textColor="primary"
             sx={{ borderBottom: 1, borderColor: 'divider' }}
           >
-            <Tab icon={<CloudUpload />} label="File Drop" />
-            <Tab icon={<LinkIcon />} label="Shorten URL" />
-            <Tab icon={<Dashboard />} label="My Items" />
+            {visibleTabs.map(tab => (
+              <Tab key={tab.path} icon={tab.icon} label={tab.label} />
+            ))}
           </Tabs>
 
           <Box sx={{ p: 4, minHeight: 400, textAlign: 'left' }}>

@@ -1,4 +1,4 @@
-﻿using ArGo.Utilities;
+using ArGo.Utilities;
 using Microsoft.Azure.Cosmos.Linq;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Middleware;
@@ -15,42 +15,72 @@ namespace ArGo.Utilities
         {
             _config = config;
         }
-        public Task Invoke(FunctionContext context, FunctionExecutionDelegate next)
+
+        public async Task Invoke(FunctionContext context, FunctionExecutionDelegate next)
         {
             var httpContext = context.GetHttpContext();
             if (httpContext != null && httpContext.Request.Headers.ContainsKey("Authorization"))
             {
                 var _user = httpContext.RequestServices.GetRequiredService<CurrentUser>();
-                var jwt = _config.JwtConfig;
-                var authorization = httpContext.Request.Headers.Authorization;
-                var bearer = authorization.ToString().Substring(7);
-                ClaimsPrincipal? principal = JwtTokenHelper.ReadClaimsFromJwt(bearer, jwt.SecretKey, jwt.Issuer, jwt.Audience);
-                if (principal != null)
+                var authConfig = _config.ArAuthConfig;
+                var authorization = httpContext.Request.Headers.Authorization.ToString();
+                
+                if (authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
                 {
-
-
-                    var type = principal.Claims.FirstOrDefault(e => e.Type == "typ" && e.Value == "access_token");
-                    if (type != null)
+                    var bearer = authorization.Substring(7);
+                    
+                    try 
                     {
-                        var userId = principal.Claims.FirstOrDefault(e => e.Type == "userId")?.Value;
-                        if (string.IsNullOrEmpty(userId))
+                        var (principal, error) = await JwtTokenHelper.ValidateOidcToken(bearer, authConfig.Authority, authConfig.Audience, authConfig.Scope);
+                        _user.AuthFailureReason = error;
+
+                        if (principal != null)
                         {
-                            return next(context);
+                            var userIdStr = principal.Claims.FirstOrDefault(e => e.Type == ClaimTypes.NameIdentifier || e.Type == "sub")?.Value;
+                            if (!string.IsNullOrEmpty(userIdStr))
+                            {
+                                httpContext.User = principal;
+                                
+                                if (Guid.TryParse(userIdStr, out var userIdGuid))
+                                {
+                                    _user.UserId = userIdGuid;
+                                }
+
+                                _user.Name = principal.FindFirstValue(ClaimTypes.Name) ?? principal.FindFirstValue("name") ?? "";
+                                _user.EmailAddress = principal.FindFirstValue(ClaimTypes.Email) ?? principal.FindFirstValue("email") ?? "";
+                                _user.IsAuthenticated = true;
+
+                                _user.Roles = principal.Claims.Where(e => e.Type == ClaimTypes.Role || e.Type == "role")
+                                                .Where(e => e.Value.StartsWith("api://")).Select(e => e.Value).ToArray();
+
+                                _user.Scopes = principal.Claims.Where(e => e.Type == ClaimTypes.Role || e.Type == "role")
+                                                .Where(e => e.Value.StartsWith("api://"))
+                                                .Select(e =>
+                                                {
+                                                    var resourceId = $"api://{authConfig.Audience}/";
+                                                    if (e.Value.StartsWith(resourceId)) return e.Value.Substring(resourceId.Length);
+                                                    return e.Value;
+                                                }).ToArray();
+                            }
                         }
-                        httpContext.User = principal;
-                        _user.UserId = Guid.Parse(userId!);
-                        _user.Name = principal.FindFirstValue(ClaimTypes.Name)!;
-                        _user.EmailAddress = principal.FindFirstValue(ClaimTypes.Email)!;
-                        _user.IsAuthenticated = true;
-                        _user.Roles = principal.Claims.Where(e => e.Type == ClaimTypes.Role).Select(e => e.Value).ToArray();
-                        _user.App = principal.Claims.FirstOrDefault(e => e.Type == "app")?.Value ?? "";
+                    }
+                    catch (Exception ex)
+                    {
+                        _user.AuthFailureReason = ex.Message;
                     }
                 }
             }
 
+            await next(context);
 
-
-            return next(context);
+            if (httpContext != null && (httpContext.Response.StatusCode == 401 || httpContext.Response.StatusCode == 403))
+            {
+                var user = httpContext.RequestServices.GetService<CurrentUser>();
+                if (!string.IsNullOrEmpty(user?.AuthFailureReason))
+                {
+                    httpContext.Response.Headers["X-Auth-Reason"] = user.AuthFailureReason;
+                }
+            }
         }
     }
 }
