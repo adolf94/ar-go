@@ -4,6 +4,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.StaticFiles;
 using System.Net;
 
 namespace ArGo.Api.Functions;
@@ -14,6 +15,7 @@ public class RedirectFunction
     private readonly IFileService _fileService;
     private readonly IMetadataService _metadataService;
     private readonly ILogger<RedirectFunction> _logger;
+    private readonly FileExtensionContentTypeProvider _contentTypeProvider;
 
     public RedirectFunction(ILinkService linkService, IFileService fileService, IMetadataService metadataService, ILogger<RedirectFunction> logger)
     {
@@ -21,20 +23,57 @@ public class RedirectFunction
         _fileService = fileService;
         _metadataService = metadataService;
         _logger = logger;
+        _contentTypeProvider = new FileExtensionContentTypeProvider();
     }
 
     [Function(nameof(RedirectFunction))]
     public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "{shortCode}")] HttpRequest req,
-        string shortCode)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "{shortCode?}")] HttpRequest req,
+        string? shortCode)
     {
+        var wwwroot = Path.Combine(Environment.CurrentDirectory, "wwwroot");
+
+        // Handle Root /
+        if (string.IsNullOrEmpty(shortCode))
+        {
+            var indexPath = Path.Combine(wwwroot, "index.html");
+            if (File.Exists(indexPath))
+            {
+                return new PhysicalFileResult(indexPath, "text/html");
+            }
+            return new ContentResult { Content = "UI not bundled. Please build the UI and copy it to wwwroot.", StatusCode = 404 };
+        }
+
+        // Handle root-level static files (e.g., manifest.json, favicon.ico)
+        if (shortCode.Contains('.'))
+        {
+            var filePath = Path.Combine(wwwroot, shortCode);
+            if (File.Exists(filePath))
+            {
+                if (!_contentTypeProvider.TryGetContentType(filePath, out var contentType))
+                {
+                    contentType = "application/octet-stream";
+                }
+                return new PhysicalFileResult(filePath, contentType);
+            }
+            return new NotFoundResult();
+        }
+
         _logger.LogInformation("Resolving unified link: {ShortCode}", shortCode);
 
         var result = await _linkService.ResolveLinkAsync(shortCode);
 
         if (result == null)
         {
-            _logger.LogWarning("Link {ShortCode} not found or expired.", shortCode);
+            _logger.LogWarning("Link {ShortCode} not found or expired. Falling back to SPA.", shortCode);
+            
+            var indexPath = Path.Combine(wwwroot, "index.html");
+
+            if (File.Exists(indexPath))
+            {
+                return new PhysicalFileResult(indexPath, "text/html");
+            }
+
             return new ContentResult { Content = "This link has expired or does not exist.", StatusCode = 410 };
         }
 

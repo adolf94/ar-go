@@ -11,18 +11,40 @@ env:
   DOTNET_VERSION: '9.0' # set this to the dotnet version to use
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
+    environment: AZURE
 
     steps:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build ArGo.Web UI
+        run: |
+          pushd './ArGo.Web'
+          npm install
+          npm run build
+          popd
+
+      - name: Substitute JSON (migrated from ar-auth)
+        uses: restackio/update-json-file-action@2.1
+        with:
+          file:  ArGo.Web/dist/config.json
+          fields: '{"api":"${{ vars.API }}", "redirectUri":"${{ vars.REDIRECT_URI }}", "authUri":"${{ vars.AUTH_API }}", "clientId":"${{ vars.CLIENT_ID }}", "scope":"${{ vars.SCOPE }}"}'
+
+      - name: Move/Rename config.json to js
+        run: |
+              echo window.webConfig= > config.js
+              cat config.json >> config.js
+        working-directory: ArGo.Web/dist
+
       - name: Setup DotNet ${{ env.DOTNET_VERSION }} Environment
-        uses: actions/setup-dotnet@v1
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -30,9 +52,40 @@ jobs:
         shell: bash
         run: |
           pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-          dotnet build --configuration Release --output ./output
+          dotnet publish --configuration Release --output ./output
           popd
-      
+
+      - name: Copy UI to Function App wwwroot
+        run: |
+          mkdir -p ./${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output/wwwroot
+          cp -r ./ArGo.Web/dist/* ./${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output/wwwroot/
+
+      - name: 'Zip artifact for deployment'
+        run: |
+          pushd ./${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output
+          zip -r ../../release.zip .
+          popd
+
+      - name: 'Upload Build Artifact'
+        uses: actions/upload-artifact@v4
+        with:
+          name: function-app-package
+          path: release.zip
+          retention-days: 1
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      id-token: write #This is required for requesting the JWT
+      contents: read #This is required for actions/checkout
+
+    steps:
+      - name: 'Download Build Artifact'
+        uses: actions/download-artifact@v4
+        with:
+          name: function-app-package
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -46,5 +99,5 @@ jobs:
         with:
           app-name: 'ar-go'
           slot-name: 'Production'
-          package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output'
+          package: ./release.zip
           
