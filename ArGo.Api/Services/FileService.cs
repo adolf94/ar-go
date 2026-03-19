@@ -1,3 +1,4 @@
+#nullable enable
 using ArGo.Api.Data;
 using ArGo.Api.Entities;
 using ArGo.Api.Interfaces;
@@ -46,13 +47,10 @@ public class FileService : IFileService
         return metadata;
     }
 
-    public Task<string> GenerateSasTokenAsync(string blobName, DateTime linkExpirationUtc)
+    public async Task<string> GenerateSasTokenAsync(string blobName, DateTime linkExpirationUtc)
     {
         var container = _blobServiceClient.GetBlobContainerClient(ContainerName);
         var blobClient = container.GetBlobClient(blobName);
-
-        if (!blobClient.CanGenerateSasUri)
-            throw new InvalidOperationException("BlobClient is not configured for SAS generation. Ensure a StorageSharedKeyCredential is used.");
 
         var sasBuilder = new BlobSasBuilder
         {
@@ -63,7 +61,24 @@ public class FileService : IFileService
         };
         sasBuilder.SetPermissions(BlobSasPermissions.Read);
 
-        return Task.FromResult(blobClient.GenerateSasUri(sasBuilder).ToString());
+        // Try User Delegation SAS first (recommended for Managed Identity/DefaultAzureCredential)
+        try
+        {
+            var userDelegationKey = await _blobServiceClient.GetUserDelegationKeyAsync(null, linkExpirationUtc);
+            return blobClient.GenerateUserDelegationSasUri(sasBuilder, userDelegationKey).ToString();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "User Delegation SAS failed. Falling back to Account SAS.");
+
+            if (blobClient.CanGenerateSasUri)
+            {
+                return blobClient.GenerateSasUri(sasBuilder).ToString();
+            }
+
+            _logger.LogError(ex, "Failed to generate any SAS for {BlobName}. Make sure the identity has 'Storage Blob Delegator' role OR a StorageSharedKeyCredential is used.", blobName);
+            throw new InvalidOperationException("SAS generation failed. Ensure appropriate RBAC roles are assigned or a connection string with Account Key is used.", ex);
+        }
     }
 
     public async Task<FileMetadata?> GetFileMetadataAsync(string fileId)
