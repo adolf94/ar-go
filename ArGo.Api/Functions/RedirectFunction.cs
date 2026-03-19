@@ -122,6 +122,8 @@ public class RedirectFunction
         if (!string.IsNullOrEmpty(link.Title) || !string.IsNullOrEmpty(link.Description) || !string.IsNullOrEmpty(link.ImageUrl))
         {
             var targetUrl = link.LongUrl;
+            var baseUrl = $"{req.Scheme}://{req.Host}";
+            var currentUrl = $"{baseUrl}{req.Path}";
 
             if (link.Type == LinkType.FileAccess && string.IsNullOrEmpty(targetUrl))
             {
@@ -134,38 +136,174 @@ public class RedirectFunction
 
             if (!string.IsNullOrEmpty(targetUrl))
             {
+                // Detect if the request is from a social bot (Discord, Twitter, etc.)
+                var userAgent = req.Headers["User-Agent"].ToString();
+                var isSocialBot = userAgent.Contains("Discordbot", StringComparison.OrdinalIgnoreCase) ||
+                                  userAgent.Contains("Twitterbot", StringComparison.OrdinalIgnoreCase) ||
+                                  userAgent.Contains("Slackbot", StringComparison.OrdinalIgnoreCase) ||
+                                  userAgent.Contains("WhatsApp", StringComparison.OrdinalIgnoreCase) ||
+                                  userAgent.Contains("TelegramBot", StringComparison.OrdinalIgnoreCase) ||
+                                  userAgent.Contains("facebookexternalhit", StringComparison.OrdinalIgnoreCase) ||
+                                  userAgent.Contains("LinkedInBot", StringComparison.OrdinalIgnoreCase);
+
+                // Seamless experience: Redirect humans immediately, show preview only to bots
+                if (!isSocialBot)
+                {
+                    _logger.LogInformation("Seamless redirect for human user: {UserAgent}", userAgent);
+                    return new RedirectResult(targetUrl, permanent: false);
+                }
+
+                _logger.LogInformation("Serving metadata preview for social bot: {UserAgent}", userAgent);
+
+                var siteName = string.IsNullOrEmpty(link.SiteName) ? "ArGo" : link.SiteName;
+                var displayTitle = System.Web.HttpUtility.HtmlEncode(link.Title ?? "Shared Content");
+                var displayDesc = System.Web.HttpUtility.HtmlEncode(link.Description ?? "");
+                var displaySite = System.Web.HttpUtility.HtmlEncode(siteName);
+                
                 var html = $@"
                     <!DOCTYPE html>
-                    <html>
+                    <html lang=""en"">
                     <head>
                         <meta charset=""utf-8"">
-                        <title>{System.Web.HttpUtility.HtmlEncode(link.Title)}</title>
-                        <meta name=""description"" content=""{System.Web.HttpUtility.HtmlEncode(link.Description)}"">
+                        <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+                        <title>{displayTitle}</title>
+                        <meta name=""description"" content=""{displayDesc}"">
                         
                         <!-- Open Graph / Facebook -->
                         <meta property=""og:type"" content=""website"">
-                        <meta property=""og:url"" content=""{req.Path}"">
-                        <meta property=""og:title"" content=""{System.Web.HttpUtility.HtmlEncode(link.Title)}"">
-                        <meta property=""og:description"" content=""{System.Web.HttpUtility.HtmlEncode(link.Description)}"">
+                        <meta property=""og:url"" content=""{currentUrl}"">
+                        <meta property=""og:title"" content=""{displayTitle}"">
+                        <meta property=""og:description"" content=""{displayDesc}"">
                         <meta property=""og:image"" content=""{link.ImageUrl}"">
-                        <meta property=""og:site_name"" content=""{System.Web.HttpUtility.HtmlEncode(link.SiteName)}"">
+                        <meta property=""og:site_name"" content=""{displaySite}"">
 
                         <!-- Twitter -->
                         <meta name=""twitter:card"" content=""summary_large_image"">
-                        <meta name=""twitter:url"" content=""{req.Path}"">
-                        <meta name=""twitter:title"" content=""{System.Web.HttpUtility.HtmlEncode(link.Title)}"">
-                        <meta name=""twitter:description"" content=""{System.Web.HttpUtility.HtmlEncode(link.Description)}"">
+                        <meta name=""twitter:url"" content=""{currentUrl}"">
+                        <meta name=""twitter:title"" content=""{displayTitle}"">
+                        <meta name=""twitter:description"" content=""{displayDesc}"">
                         <meta name=""twitter:image"" content=""{link.ImageUrl}"">
 
-                        <meta name=""theme-color"" content=""{link.ThemeColor ?? "#000000"}"">
+                        <meta name=""theme-color"" content=""{link.ThemeColor ?? "#0d0d0d"}"">
 
-                        <meta http-equiv=""refresh"" content=""0;url={targetUrl}"">
-                        <script type=""text/javascript"">
-                            window.location.href = ""{targetUrl}"";
-                        </script>
+                        <meta http-equiv=""refresh"" content=""1;url={targetUrl}"">
+                        
+                        <style>
+                            :root {{
+                                --bg-color: #0d0d0d;
+                                --accent-color: {link.ThemeColor ?? "#6366f1"};
+                                --text-color: #ffffff;
+                            }}
+                            body {{
+                                margin: 0;
+                                padding: 0;
+                                background-color: var(--bg-color);
+                                color: var(--text-color);
+                                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                min-height: 100vh;
+                                overflow: hidden;
+                            }}
+                            .background {{
+                                position: fixed;
+                                top: 0; left: 0; width: 100%; height: 100%;
+                                background: radial-gradient(circle at 50% 50%, var(--accent-color) 0%, transparent 50%);
+                                opacity: 0.15;
+                                filter: blur(100px);
+                                z-index: -1;
+                            }}
+                            .glass-card {{
+                                background: rgba(255, 255, 255, 0.05);
+                                backdrop-filter: blur(20px);
+                                -webkit-backdrop-filter: blur(20px);
+                                border: 1px solid rgba(255, 255, 255, 0.1);
+                                border-radius: 24px;
+                                padding: 3rem;
+                                max-width: 450px;
+                                width: 85%;
+                                text-align: center;
+                                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+                                animation: fadeIn 0.8s ease-out;
+                            }}
+                            @keyframes fadeIn {{
+                                from {{ opacity: 0; transform: translateY(20px); }}
+                                to {{ opacity: 1; transform: translateY(0); }}
+                            }}
+                            .logo {{
+                                font-weight: 800;
+                                font-size: 1.5rem;
+                                margin-bottom: 2rem;
+                                letter-spacing: -0.05em;
+                                color: var(--accent-color);
+                            }}
+                            .preview-image {{
+                                width: 100%;
+                                aspect-ratio: 16/9;
+                                object-fit: cover;
+                                border-radius: 12px;
+                                margin-bottom: 2rem;
+                                background: rgba(255, 255, 255, 0.05);
+                            }}
+                            .title {{
+                                font-size: 1.5rem;
+                                font-weight: 700;
+                                margin: 0 0 1rem 0;
+                                line-height: 1.2;
+                            }}
+                            .description {{
+                                color: rgba(255, 255, 255, 0.6);
+                                font-size: 1rem;
+                                margin-bottom: 2.5rem;
+                                line-height: 1.5;
+                            }}
+                            .loader-container {{
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                gap: 12px;
+                                color: rgba(255, 255, 255, 0.4);
+                                font-size: 0.875rem;
+                                font-weight: 500;
+                            }}
+                            .loader {{
+                                width: 18px;
+                                height: 18px;
+                                border: 2px solid rgba(255, 255, 255, 0.1);
+                                border-top: 2px solid var(--accent-color);
+                                border-radius: 50%;
+                                animation: spin 0.8s linear infinite;
+                            }}
+                            @keyframes spin {{
+                                0% {{ transform: rotate(0deg); }}
+                                100% {{ transform: rotate(360deg); }}
+                            }}
+                            a {{
+                                color: var(--accent-color);
+                                text-decoration: none;
+                                word-break: break-all;
+                            }}
+                        </style>
                     </head>
                     <body>
-                        <p>Redirecting to <a href=""{targetUrl}"">{targetUrl}</a>...</p>
+                        <div class=""background""></div>
+                        <div class=""glass-card"">
+                            <div class=""logo"">{displaySite}</div>
+                            {(!string.IsNullOrEmpty(link.ImageUrl) ? $"<img src=\"{link.ImageUrl}\" class=\"preview-image\" alt=\"Preview\"/>" : "")}
+                            <h1 class=""title"">{displayTitle}</h1>
+                            <p class=""description"">{displayDesc}</p>
+                            <div class=""loader-container"">
+                                <div class=""loader""></div>
+                                <span>Redirecting to destination...</span>
+                            </div>
+                            <p style=""margin-top: 2rem; font-size: 0.75rem; opacity: 0.3;"">
+                                You are being redirected to <a href=""{targetUrl}"">{targetUrl}</a>
+                            </p>
+                        </div>
+                        <script>
+                            setTimeout(() => {{ window.location.href = ""{targetUrl}""; }}, 1000);
+                        </script>
                     </body>
                     </html>";
                 
