@@ -40,24 +40,37 @@ public class RedirectFunction
             return new NotFoundResult();
         }
 
-        var wwwroot = Path.Combine(_env.ContentRootPath, "wwwroot");
+        var root = _env.ContentRootPath;
+        var wwwroot = Path.Combine(root, "wwwroot");
+        if (!Directory.Exists(wwwroot) && root.EndsWith("wwwroot", StringComparison.OrdinalIgnoreCase))
+        {
+            wwwroot = root;
+        }
 
         // Handle Root / or 'app' route (direct SPA fallback)
         if (string.IsNullOrEmpty(shortCode) || shortCode.Equals("app", StringComparison.OrdinalIgnoreCase))
         {
-            var indexPath = Path.Combine(wwwroot, "index.html");
+            var indexPath = Path.GetFullPath(Path.Combine(wwwroot, "index.html"));
             if (File.Exists(indexPath))
             {
                 return new PhysicalFileResult(indexPath, "text/html");
             }
             _logger.LogWarning($"Unable to serve index.html at {indexPath}");
-            return new ContentResult { Content = "UI not bundled. Please build the UI and copy it to wwwroot.", StatusCode = 404 };
+            return new ContentResult { Content = $"UI not bundled. Search path: {indexPath}", StatusCode = 404 };
         }
 
         // Handle root-level static files (e.g., manifest.json, favicon.ico)
         if (shortCode.Contains('.'))
         {
-            var filePath = Path.Combine(wwwroot, shortCode);
+            var filePath = Path.GetFullPath(Path.Combine(wwwroot, shortCode));
+            
+            // Security: Prevent path traversal
+            if (!filePath.StartsWith(wwwroot, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Potential path traversal attempt blocked: {Path}", shortCode);
+                return new NotFoundResult();
+            }
+
             if (File.Exists(filePath))
             {
                 if (!_contentTypeProvider.TryGetContentType(filePath, out var contentType))

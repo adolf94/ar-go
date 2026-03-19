@@ -35,8 +35,20 @@ public class StaticFileHandler
         var fullPath = string.IsNullOrEmpty(path) ? dir : Path.Combine(dir, path.Replace("/", Path.DirectorySeparatorChar.ToString()));
         _logger.LogInformation("Static file request: {Path}", fullPath);
 
-        var wwwroot = Path.Combine(_env.ContentRootPath, "wwwroot");
-        var filePath = Path.Combine(wwwroot, fullPath);
+        var root = _env.ContentRootPath;
+        var wwwroot = Path.Combine(root, "wwwroot");
+        if (!Directory.Exists(wwwroot) && root.EndsWith("wwwroot", StringComparison.OrdinalIgnoreCase))
+        {
+            wwwroot = root;
+        }
+
+        // Security: Prevent path traversal
+        var filePath = Path.GetFullPath(Path.Combine(wwwroot, fullPath));
+        if (!filePath.StartsWith(wwwroot, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning("Potential path traversal attempt blocked: {Path}", fullPath);
+            return new NotFoundResult();
+        }
 
         // If a physical file exists, serve it
         if (File.Exists(filePath))
