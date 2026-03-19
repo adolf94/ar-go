@@ -48,13 +48,18 @@ public class StaticFileHandler
             return new PhysicalFileResult(filePath, contentType);
         }
 
+        _logger.LogWarning("File not found: {FilePath}", filePath);
+
         // SPA Fallback: For nested routes, serve index.html if file doesn't exist
         var indexPath = Path.Combine(wwwroot, "index.html");
         if (File.Exists(indexPath))
         {
+
             _logger.LogInformation("File not found, falling back to index.html for SPA route: {Path}", fullPath);
             return new PhysicalFileResult(indexPath, "text/html");
         }
+
+        _logger.LogWarning("Unable to serve index.html at {IndexPath}", indexPath);
 
         return new NotFoundResult();
     }

@@ -50,6 +50,7 @@ public class RedirectFunction
             {
                 return new PhysicalFileResult(indexPath, "text/html");
             }
+            _logger.LogWarning($"Unable to serve index.html at {indexPath}");
             return new ContentResult { Content = "UI not bundled. Please build the UI and copy it to wwwroot.", StatusCode = 404 };
         }
 
