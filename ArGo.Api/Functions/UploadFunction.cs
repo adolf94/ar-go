@@ -37,7 +37,7 @@ public class UploadFunction
 
     [Function("FetchMetadata")]
     public async Task<IActionResult> FetchMetadata(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "metadata")] HttpRequest req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/metadata")] HttpRequest req)
     {
         if (!_currentUser.IsAuthenticated) return new UnauthorizedResult();
         if (!_currentUser.IsAuthorized("user", [AuthorizeLookUp.Scope])) return new StatusCodeResult(StatusCodes.Status403Forbidden);
@@ -55,7 +55,7 @@ public class UploadFunction
 
     [Function(nameof(UploadFunction))]
     public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "upload")] HttpRequest req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "api/upload")] HttpRequest req)
     {
         if (!_currentUser.IsAuthenticated) return new UnauthorizedResult();
         if (!_currentUser.IsAuthorized("files:create")) return new StatusCodeResult(StatusCodes.Status403Forbidden);
@@ -134,7 +134,7 @@ public class UploadFunction
 
     [Function("ShortenUrl")]
     public async Task<IActionResult> ShortenUrl(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "shorten")] HttpRequest req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "api/shorten")] HttpRequest req)
     {
         if (!_currentUser.IsAuthenticated) return new UnauthorizedResult();
         if (!_currentUser.IsAuthorized()) return new StatusCodeResult(StatusCodes.Status403Forbidden);
@@ -185,7 +185,7 @@ public class UploadFunction
 
     [Function("GenerateFileLink")]
     public async Task<IActionResult> GenerateFileLink(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "files/{fileId}/links")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "api/files/{fileId}/links")] HttpRequest req,
         string fileId)
     {
         if (!_currentUser.IsAuthenticated) return new UnauthorizedResult();
@@ -240,7 +240,7 @@ public class UploadFunction
 
     [Function("GetMyItems")]
     public async Task<IActionResult> GetMyItems(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "my-items")] HttpRequest req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/my-items")] HttpRequest req)
     {
         if (!_currentUser.IsAuthenticated) return new UnauthorizedResult();
         if (!_currentUser.IsAuthorized()) return new StatusCodeResult(StatusCodes.Status403Forbidden);
@@ -255,7 +255,7 @@ public class UploadFunction
 
     [Function("DeleteLink")]
     public async Task<IActionResult> DeleteLink(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "links/{shortCode}")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "api/links/{shortCode}")] HttpRequest req,
         string shortCode)
     {
         if (!_currentUser.IsAuthenticated) return new UnauthorizedResult();

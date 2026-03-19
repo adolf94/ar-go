@@ -90,11 +90,28 @@ In your **HTTP Request** block:
 ### 2. Login Flow (If responseStatus = 401)
 If the token is expired or missing:
 
-- **Block**: `App decide` (Check if `token` is valid)
-- **Block**: `Browser open`
-  - **URL**: `https://auth.adolfrey.com/api/authorize?client_id=argo-automate&redirect_uri=automate-callback&response_type=code&scope=...`
-- **Block**: `App activity start` (Wait for the redirect)
-  - Alternatively, use a **Broadcast receive** or **Intent received** if you've configured a custom URL scheme in Android for Automate.
+- **Block**: `Dialog web` (Recommended)
+  - **URL**: `https://auth.adolfrey.com/api/authorize?client_id=argo-automate&redirect_uri=automate://callback&response_type=code`
+  - **Interception URL**: `automate://callback.*`
+  - **Proceed**: `When URL intercepted`
+  - **Output variables**: `interceptedUrl`
+- **Block**: `Variable set` (Extract Code)
+  - **Variable**: `authCode`
+  - **Value**: `replaceAll(interceptedUrl, r".*code=([^&]+).*", "$1")`
+
+**Note on Custom URL Schemes:**
+Automate uses the `automate://` scheme by default. While you cannot register your own unique scheme (like `argo://`) within the app, you can use any path (e.g., `automate://argo-callback`) to distinguish your flow's redirects. Ensure this URL is added to your OAuth provider's **Allowed Redirect URIs**.
+
+### 3. Alternative: Intent Received (Deep Linking)
+If you prefer not to use `Dialog web`, you can use a separate listener:
+
+- **Block**: `Content view` or `Browser open` (To open the login page)
+- **Block**: `Intent received` (To catch the return)
+  - **Action**: `android.intent.action.VIEW`
+  - **Data URI**: `automate://callback`
+  - **Category**: `android.intent.category.BROWSABLE`
+  - **Proceed**: `When received`
+  - **Output variables**: `dataUri`
 
 ### Method 3: Zero-Touch Sync (Cloud Message receive)
 This is the most advanced and seamless method. Instead of copy-pasting, AR Auth pushes the token directly to your device via the Automate Cloud Messaging API.
