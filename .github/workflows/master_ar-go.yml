@@ -60,6 +60,10 @@ jobs:
           mkdir -p ./${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output/wwwroot
           cp -r ./ArGo.Web/dist/* ./${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output/wwwroot/
 
+      - name: 'Artifact Diagnostics'
+        run: |
+          ls -R ./${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output
+
       - name: 'Zip artifact for deployment'
         run: |
           pushd ./${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output

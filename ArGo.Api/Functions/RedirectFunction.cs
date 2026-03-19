@@ -40,12 +40,9 @@ public class RedirectFunction
             return new NotFoundResult();
         }
 
-        var root = _env.ContentRootPath;
-        var wwwroot = Path.Combine(root, "wwwroot");
-        if (!Directory.Exists(wwwroot) && root.EndsWith("wwwroot", StringComparison.OrdinalIgnoreCase))
-        {
-            wwwroot = root;
-        }
+        // Resolve wwwroot path using AppContext.BaseDirectory (proven ar-auth pattern)
+        var baseDir = AppContext.BaseDirectory;
+        var wwwroot = Path.Combine(baseDir, "wwwroot");
 
         // Handle Root / or 'app' route (direct SPA fallback)
         if (string.IsNullOrEmpty(shortCode) || shortCode.Equals("app", StringComparison.OrdinalIgnoreCase))
@@ -55,8 +52,8 @@ public class RedirectFunction
             {
                 return new PhysicalFileResult(indexPath, "text/html");
             }
-            _logger.LogWarning($"Unable to serve index.html at {indexPath}");
-            return new ContentResult { Content = $"UI not bundled. Search path: {indexPath}", StatusCode = 404 };
+            _logger.LogWarning($"Unable to serve index.html at {indexPath}. BaseDirectory: {baseDir}");
+            return new ContentResult { Content = "UI not bundled. Please build the UI and copy it to wwwroot.", StatusCode = 404 };
         }
 
         // Handle root-level static files (e.g., manifest.json, favicon.ico)

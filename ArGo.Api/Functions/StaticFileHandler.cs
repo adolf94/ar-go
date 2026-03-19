@@ -35,12 +35,9 @@ public class StaticFileHandler
         var fullPath = string.IsNullOrEmpty(path) ? dir : Path.Combine(dir, path.Replace("/", Path.DirectorySeparatorChar.ToString()));
         _logger.LogInformation("Static file request: {Path}", fullPath);
 
-        var root = _env.ContentRootPath;
-        var wwwroot = Path.Combine(root, "wwwroot");
-        if (!Directory.Exists(wwwroot) && root.EndsWith("wwwroot", StringComparison.OrdinalIgnoreCase))
-        {
-            wwwroot = root;
-        }
+        // Resolve wwwroot path using AppContext.BaseDirectory (proven ar-auth pattern)
+        var baseDir = AppContext.BaseDirectory;
+        var wwwroot = Path.Combine(baseDir, "wwwroot");
 
         // Security: Prevent path traversal
         var filePath = Path.GetFullPath(Path.Combine(wwwroot, fullPath));
