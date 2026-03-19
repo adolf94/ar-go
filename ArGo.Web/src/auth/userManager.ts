@@ -8,7 +8,7 @@ const createUserManager = () =>
     popup_redirect_uri: window.webConfig.redirectUri || window.location.origin + '/',
     response_type: 'code',
     scope: window.webConfig.scope,
-    userStore: new WebStorageStateStore({ store: window.sessionStorage }),
+    userStore: new WebStorageStateStore({ store: window.localStorage }),
     monitorSession: false,
     automaticSilentRenew: true,
   });

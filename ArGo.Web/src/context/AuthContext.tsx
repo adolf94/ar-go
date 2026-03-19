@@ -93,7 +93,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         }
 
-        const oidcUser = await getUserManager().getUser();
+        let oidcUser = await getUserManager().getUser();
+        
+        // If no user or expired, try silent signin (refreshes if refresh_token is available)
+        if (!oidcUser || oidcUser.expired) {
+          try {
+            console.log('User missing or expired, attempting silent signin...');
+            oidcUser = await getUserManager().signinSilent();
+          } catch (err) {
+            console.warn('Silent signin on load failed:', err);
+          }
+        }
+
         if (oidcUser && !oidcUser.expired) {
           setUser(mapOidcUser(oidcUser));
           setAccessToken(oidcUser.access_token);
