@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.Hosting;
 using System.Net;
 
 namespace ArGo.Api.Functions;
@@ -16,13 +17,15 @@ public class RedirectFunction
     private readonly IMetadataService _metadataService;
     private readonly ILogger<RedirectFunction> _logger;
     private readonly FileExtensionContentTypeProvider _contentTypeProvider;
+    private readonly IHostEnvironment _env;
 
-    public RedirectFunction(ILinkService linkService, IFileService fileService, IMetadataService metadataService, ILogger<RedirectFunction> logger)
+    public RedirectFunction(ILinkService linkService, IFileService fileService, IMetadataService metadataService, ILogger<RedirectFunction> logger, IHostEnvironment env)
     {
         _linkService = linkService;
         _fileService = fileService;
         _metadataService = metadataService;
         _logger = logger;
+        _env = env;
         _contentTypeProvider = new FileExtensionContentTypeProvider();
     }
 
@@ -31,10 +34,16 @@ public class RedirectFunction
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "{shortCode?}")] HttpRequest req,
         string? shortCode)
     {
-        var wwwroot = Path.Combine(Environment.CurrentDirectory, "wwwroot");
+        // Do not intercept API requests
+        if (!string.IsNullOrEmpty(shortCode) && shortCode.Equals("api", StringComparison.OrdinalIgnoreCase))
+        {
+            return new NotFoundResult();
+        }
 
-        // Handle Root /
-        if (string.IsNullOrEmpty(shortCode))
+        var wwwroot = Path.Combine(_env.ContentRootPath, "wwwroot");
+
+        // Handle Root / or 'app' route (direct SPA fallback)
+        if (string.IsNullOrEmpty(shortCode) || shortCode.Equals("app", StringComparison.OrdinalIgnoreCase))
         {
             var indexPath = Path.Combine(wwwroot, "index.html");
             if (File.Exists(indexPath))

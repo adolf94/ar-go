@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Hosting;
 
 namespace ArGo.Api.Functions;
 
@@ -10,10 +11,12 @@ public class StaticFileHandler
 {
     private readonly ILogger<StaticFileHandler> _logger;
     private readonly FileExtensionContentTypeProvider _contentTypeProvider;
+    private readonly IHostEnvironment _env;
 
-    public StaticFileHandler(ILogger<StaticFileHandler> logger)
+    public StaticFileHandler(ILogger<StaticFileHandler> logger, IHostEnvironment env)
     {
         _logger = logger;
+        _env = env;
         _contentTypeProvider = new FileExtensionContentTypeProvider();
     }
 
@@ -23,23 +26,36 @@ public class StaticFileHandler
         string dir,
         string? path)
     {
-        var fullPath = string.IsNullOrEmpty(path) ? dir : Path.Combine(dir, path);
-        _logger.LogInformation("Static file request: {Path}", fullPath);
-
-        var wwwroot = Path.Combine(Environment.CurrentDirectory, "wwwroot");
-        var filePath = Path.Combine(wwwroot, fullPath);
-
-        if (!File.Exists(filePath))
+        // Do not intercept API requests
+        if (dir.Equals("api", StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogWarning("File not found: {FilePath}", filePath);
             return new NotFoundResult();
         }
 
-        if (!_contentTypeProvider.TryGetContentType(filePath, out var contentType))
+        var fullPath = string.IsNullOrEmpty(path) ? dir : Path.Combine(dir, path.Replace("/", Path.DirectorySeparatorChar.ToString()));
+        _logger.LogInformation("Static file request: {Path}", fullPath);
+
+        var wwwroot = Path.Combine(_env.ContentRootPath, "wwwroot");
+        var filePath = Path.Combine(wwwroot, fullPath);
+
+        // If a physical file exists, serve it
+        if (File.Exists(filePath))
         {
-            contentType = "application/octet-stream";
+            if (!_contentTypeProvider.TryGetContentType(filePath, out var contentType))
+            {
+                contentType = "application/octet-stream";
+            }
+            return new PhysicalFileResult(filePath, contentType);
         }
 
-        return new PhysicalFileResult(filePath, contentType);
+        // SPA Fallback: For nested routes, serve index.html if file doesn't exist
+        var indexPath = Path.Combine(wwwroot, "index.html");
+        if (File.Exists(indexPath))
+        {
+            _logger.LogInformation("File not found, falling back to index.html for SPA route: {Path}", fullPath);
+            return new PhysicalFileResult(indexPath, "text/html");
+        }
+
+        return new NotFoundResult();
     }
 }
