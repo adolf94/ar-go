@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { type User as OidcUser } from 'oidc-client-ts';
-import { getUserManager, initUserManager, type AuthConfig } from './userManager';
+import { getUserManager, initUserManager, refreshAccessToken, type AuthConfig } from './userManager';
 
 export interface User {
   email: string;
@@ -94,9 +94,9 @@ export const AuthProvider = ({ children, config }: AuthProviderProps) => {
         
         if (!oidcUser || oidcUser.expired) {
           try {
-            oidcUser = await userManager.signinSilent();
+            oidcUser = await refreshAccessToken();
           } catch (err) {
-            console.warn('Silent signin on load failed:', err);
+            console.warn('Manual refresh on load failed:', err);
           }
         }
 
