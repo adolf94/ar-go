@@ -10,6 +10,7 @@ const createUserManager = () =>
     scope: window.webConfig.scope,
     userStore: new WebStorageStateStore({ store: window.localStorage }),
     monitorSession: false,
+    staleStateAgeInSeconds: 10 * 60,
     automaticSilentRenew: true,
   });
 

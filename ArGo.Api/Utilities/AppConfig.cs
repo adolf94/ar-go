@@ -8,8 +8,8 @@ namespace ArGo.Utilities
         public string DatabaseName { get; set; } = string.Empty;
         public string AzureStorage { get; set; } = string.Empty;
         public string AuthUrl { get; set; } = string.Empty;
-
-        public JwtConfiguration ArAuthConfig { get; set; } = new();
+        public string JsonLinkKey { get; set; } = string.Empty;
+				public JwtConfiguration ArAuthConfig { get; set; } = new();
     }
     public class JwtConfiguration
     {

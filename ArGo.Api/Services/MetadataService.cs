@@ -1,4 +1,5 @@
 using ArGo.Api.Interfaces;
+using ArGo.Utilities;
 using HtmlAgilityPack;
 using Microsoft.Extensions.Logging;
 using System.Net;
@@ -9,11 +10,13 @@ public class MetadataService : IMetadataService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<MetadataService> _logger;
+		private readonly AppConfig _config;
 
-    public MetadataService(HttpClient httpClient, ILogger<MetadataService> logger)
+		public MetadataService(HttpClient httpClient, ILogger<MetadataService> logger, AppConfig config)
     {
         _httpClient = httpClient;
         _logger = logger;
+        _config = config;
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
         _httpClient.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8");
         _httpClient.DefaultRequestHeaders.Add("Accept-Language", "en-US,en;q=0.9");
@@ -106,7 +109,7 @@ public class MetadataService : IMetadataService
     {
         try
         {
-            var jsonLinkUrl = $"https://jsonlink.io/api/extract?url={Uri.EscapeDataString(url)}";
+            var jsonLinkUrl = $"https://jsonlink.io/api/extract?url={Uri.EscapeDataString(url)}&api_key={_config.JsonLinkKey}";
             var response = await _httpClient.GetAsync(jsonLinkUrl);
             
             if (!response.IsSuccessStatusCode)

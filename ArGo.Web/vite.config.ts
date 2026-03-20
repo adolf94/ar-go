@@ -10,4 +10,8 @@ export default defineConfig({
     react(),
     mkcert(),
   ],
+  server: {
+    host: true,
+  },
 })
+
