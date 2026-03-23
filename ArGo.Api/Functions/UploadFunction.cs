@@ -62,15 +62,36 @@ public class UploadFunction
 
         var ct = req.ContentType ?? "";
 
-        if (!ct.StartsWith("multipart/form-data", StringComparison.OrdinalIgnoreCase))
+        // Standard multipart OR raw binary body
+        bool isMultipart = req.HasFormContentType;
+        bool isRawBinary = ct.StartsWith("application/octet-stream", StringComparison.OrdinalIgnoreCase) || 
+                          (ct.StartsWith("multipart/form-data", StringComparison.OrdinalIgnoreCase) && !isMultipart);
+
+        if (!isMultipart && !isRawBinary)
         {
-            return new BadRequestObjectResult("Content-Type must be multipart/form-data.");
+            return new BadRequestObjectResult("Content-Type must be multipart/form-data or application/octet-stream.");
         }
 
         var storageTierRaw = req.Query["storageTier"].FirstOrDefault() ?? "OneDay";
         var linkTierRaw = req.Query["linkTier"].FirstOrDefault() ?? "OneHour";
         var createdBy = _currentUser.UserId.ToString();
-        var fileName = req.Query["fileName"].FirstOrDefault() ?? $"{Guid.NewGuid()}.bin";
+        
+        // Finalize fileName discovery (from Form or Query)
+        string fileName = req.Query["fileName"].FirstOrDefault()!;
+        Stream fileStream = req.Body;
+
+        if (isMultipart)
+        {
+            var file = req.Form.Files.FirstOrDefault();
+            if (file != null)
+            {
+                fileName ??= file.FileName;
+                fileStream = file.OpenReadStream();
+            }
+        }
+        
+        fileName ??= $"{Guid.NewGuid()}.bin";
+
         var customShortCode = req.Query["customShortCode"].FirstOrDefault();
         var title = (string?)req.Query["title"];
         var description = (string?)req.Query["description"];
@@ -90,7 +111,7 @@ public class UploadFunction
         try
         {
             // 1. Upload file
-            var fileMetadata = await _fileService.UploadFileAsync(req.Body, fileName, storageExpiry, createdBy);
+            var fileMetadata = await _fileService.UploadFileAsync(fileStream, fileName, storageExpiry, createdBy);
 
             // 2. Generate sharing link
             var sasUri = await _fileService.GenerateSasTokenAsync(fileMetadata.BlobName, linkExpiry);
