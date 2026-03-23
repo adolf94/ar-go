@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'io.argo.mobile',
-  appName: 'argo-mobile',
+  appId: 'com.adolfrey.go',
+  appName: 'Atlas Rig - Go',
   webDir: 'dist',
   server: {
     url: 'https://192.168.0.234:3000',

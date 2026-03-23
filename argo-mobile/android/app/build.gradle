@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "io.argo.mobile"
+    namespace = "com.adolfrey.go"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "io.argo.mobile"
+        applicationId "com.adolfrey.go"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
