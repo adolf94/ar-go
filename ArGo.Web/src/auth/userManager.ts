@@ -1,4 +1,4 @@
-import { UserManager, WebStorageStateStore, type User as OidcUser } from 'oidc-client-ts';
+import { User as OidcUser, UserManager, WebStorageStateStore } from 'oidc-client-ts';
 
 const createUserManager = () =>
   new UserManager({
