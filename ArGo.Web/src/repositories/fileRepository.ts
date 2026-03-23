@@ -13,7 +13,7 @@ export const uploadFile = async (
   siteName?: string, 
   themeColor?: string
 ) => {
-  let url = `/upload?storageTier=${storageTier}&linkTier=${linkTier}&createdBy=${createdBy}&fileName=${encodeURIComponent(file.name)}`;
+  let url = `upload?storageTier=${storageTier}&linkTier=${linkTier}&createdBy=${createdBy}&fileName=${encodeURIComponent(file.name)}`;
   
   if (customShortCode) url += `&customShortCode=${encodeURIComponent(customShortCode)}`;
   if (title) url += `&title=${encodeURIComponent(title)}`;
@@ -23,8 +23,9 @@ export const uploadFile = async (
   if (siteName) url += `&siteName=${encodeURIComponent(siteName)}`;
   if (themeColor) url += `&themeColor=${encodeURIComponent(themeColor)}`;
 
-  const response = await apiClient.post(url, file, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await apiClient.post(url, formData);
   return response.data;
 };

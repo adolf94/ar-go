@@ -11,7 +11,7 @@ export const shortenUrl = async (
   siteName?: string, 
   themeColor?: string
 ) => {
-  const response = await apiClient.post('/shorten', { 
+  const response = await apiClient.post('shorten', { 
     longUrl, 
     createdBy, 
     customShortCode, 
@@ -26,12 +26,12 @@ export const shortenUrl = async (
 };
 
 export const deleteLink = async (shortCode: string, userId: string) => {
-  const response = await apiClient.delete(`/links/${shortCode}?userId=${userId}`);
+  const response = await apiClient.delete(`links/${shortCode}?userId=${userId}`);
   return response.data;
 };
 
 export const fetchMetadata = async (url: string) => {
-  const response = await apiClient.get(`/metadata?url=${encodeURIComponent(url)}`);
+  const response = await apiClient.get(`metadata?url=${encodeURIComponent(url)}`);
   return response.data;
 };
 
@@ -47,7 +47,7 @@ export const generateFileLink = async (
   siteName?: string, 
   themeColor?: string
 ) => {
-  const response = await apiClient.post(`/files/${fileId}/links`, { 
+  const response = await apiClient.post(`files/${fileId}/links`, { 
     linkTier, 
     createdBy, 
     customShortCode, 
