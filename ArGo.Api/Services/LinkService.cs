@@ -27,7 +27,7 @@ public class LinkService : ILinkService
         var shortCode = request?.CustomShortCode;
         if (!string.IsNullOrEmpty(shortCode))
         {
-            if (await _db.Links.AnyAsync(l => l.ShortCode == shortCode))
+            if (await _db.Links.FirstOrDefaultAsync(l => l.ShortCode == shortCode) != null)
             {
                 throw new InvalidOperationException("Short code already in use.");
             }
@@ -62,7 +62,7 @@ public class LinkService : ILinkService
         var shortCode = request?.CustomShortCode;
         if (!string.IsNullOrEmpty(shortCode))
         {
-            if (await _db.Links.AnyAsync(l => l.ShortCode == shortCode))
+            if (await _db.Links.FirstOrDefaultAsync(l => l.ShortCode == shortCode) != null)
             {
                 throw new InvalidOperationException("Short code already in use.");
             }

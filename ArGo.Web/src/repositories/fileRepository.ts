@@ -1,20 +1,20 @@
 import apiClient from '../utils/apiClient';
 
 export const uploadFile = async (
-  file: File, 
-  storageTier: string, 
-  linkTier: string, 
-  createdBy: string, 
-  customShortCode?: string, 
-  title?: string, 
-  description?: string, 
-  iconUrl?: string, 
-  imageUrl?: string, 
-  siteName?: string, 
+  file: File,
+  storageTier: string,
+  linkTier: string,
+  createdBy: string,
+  customShortCode?: string,
+  title?: string,
+  description?: string,
+  iconUrl?: string,
+  imageUrl?: string,
+  siteName?: string,
   themeColor?: string
 ) => {
   let url = `upload?storageTier=${storageTier}&linkTier=${linkTier}&createdBy=${createdBy}&fileName=${encodeURIComponent(file.name)}`;
-  
+
   if (customShortCode) url += `&customShortCode=${encodeURIComponent(customShortCode)}`;
   if (title) url += `&title=${encodeURIComponent(title)}`;
   if (description) url += `&description=${encodeURIComponent(description)}`;
