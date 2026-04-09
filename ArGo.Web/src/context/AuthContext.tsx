@@ -1,5 +1,5 @@
-import { ReactNode } from 'react';
-import { AuthProvider as BaseAuthProvider, useAuth as useBaseAuth, AuthConfig } from '@adolf94/ar-auth-client';
+import type { ReactNode } from 'react';
+import { AuthProvider as BaseAuthProvider, useAuth as useBaseAuth, type AuthConfig } from '@adolf94/ar-auth-client';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const config: AuthConfig = {
