@@ -10,6 +10,12 @@ namespace ArGo.Utilities
         Role = 0,
         Scope = 1
     }
+
+    public enum PrincipalType
+    {
+        User,
+        App
+    }
     public class CurrentUser
     {
         private readonly string resourceId = "api://ar-go-api/";
@@ -23,9 +29,13 @@ namespace ArGo.Utilities
         public string[] Roles { get; set; } = Array.Empty<string>();
         public string[] Scopes { get; set; } = Array.Empty<string>();
         public string App { get; set; } = "";
+        public string ClientId { get; set; } = "";
+        public PrincipalType PrincipalType { get; set; } = PrincipalType.User;
         public string Name { get; set; } = "";
         public bool IsAuthenticated { get; set; } = false;
         public string? AuthFailureReason { get; set; }
+
+        public string PrincipalId => PrincipalType == PrincipalType.App ? (string.IsNullOrEmpty(App) ? ClientId : App) : UserId.ToString();
 
 
         public bool IsAuthorized(string roles = "user", AuthorizeLookUp[]? lookIn = null)

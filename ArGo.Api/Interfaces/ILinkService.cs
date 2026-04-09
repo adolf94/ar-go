@@ -12,7 +12,8 @@ public record CreateLinkRequest(
     string? ImageUrl = null,
     string? SiteName = null,
     string? ThemeColor = null,
-    DateTime? ExpirationUtc = null
+    DateTime? ExpirationUtc = null,
+    string? ClientId = null
 );
 
 public interface ILinkService

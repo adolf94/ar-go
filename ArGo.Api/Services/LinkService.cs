@@ -50,6 +50,7 @@ public class LinkService : ILinkService
             ImageUrl = request?.ImageUrl,
             SiteName = request?.SiteName,
             ThemeColor = request?.ThemeColor,
+            ClientId = request?.ClientId,
             MetadataFetched = !string.IsNullOrEmpty(request?.Title) || !string.IsNullOrEmpty(request?.ImageUrl)
         };
         _db.Links.Add(link);
@@ -86,6 +87,7 @@ public class LinkService : ILinkService
             ImageUrl = request?.ImageUrl,
             SiteName = request?.SiteName,
             ThemeColor = request?.ThemeColor,
+            ClientId = request?.ClientId,
             MetadataFetched = !string.IsNullOrEmpty(request?.Title) || !string.IsNullOrEmpty(request?.ImageUrl)
         };
         _db.Links.Add(link);

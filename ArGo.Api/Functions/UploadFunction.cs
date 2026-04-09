@@ -58,6 +58,8 @@ public class UploadFunction
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "api/upload")] HttpRequest req)
     {
         if (!_currentUser.IsAuthenticated) return new UnauthorizedResult();
+        // Apps are not allowed to upload files
+        if (_currentUser.PrincipalType == PrincipalType.App) return new StatusCodeResult(StatusCodes.Status403Forbidden);
         if (!_currentUser.IsAuthorized("files:create")) return new StatusCodeResult(StatusCodes.Status403Forbidden);
 
         var ct = req.ContentType ?? "";
@@ -74,7 +76,23 @@ public class UploadFunction
 
         var storageTierRaw = req.Query["storageTier"].FirstOrDefault() ?? "OneDay";
         var linkTierRaw = req.Query["linkTier"].FirstOrDefault() ?? "OneHour";
-        var createdBy = _currentUser.UserId.ToString();
+        
+        // On-behalf-of logic
+        var onBehalfOfUserId = req.Query["onBehalfOfUserId"].FirstOrDefault();
+        var createdBy = _currentUser.PrincipalId;
+
+        if (!string.IsNullOrEmpty(onBehalfOfUserId))
+        {
+            if (_currentUser.IsAuthorized("links:on_behalf"))
+            {
+                createdBy = onBehalfOfUserId;
+            }
+            else
+            {
+                _logger.LogWarning("Principal {Id} attempted on-behalf-of upload without scope.", _currentUser.PrincipalId);
+                return new StatusCodeResult(StatusCodes.Status403Forbidden);
+            }
+        }
         
         // Finalize fileName discovery (from Form or Query)
         string fileName = req.Query["fileName"].FirstOrDefault()!;
@@ -136,7 +154,7 @@ public class UploadFunction
                 imageUrl = sasUri;
             }
 
-            var linkRequest = new CreateLinkRequest(customShortCode, title, description, iconUrl, imageUrl, siteName, themeColor, linkExpiry);
+            var linkRequest = new CreateLinkRequest(customShortCode, title, description, iconUrl, imageUrl, siteName, themeColor, linkExpiry, ClientId: _currentUser.ClientId);
             var link = await _linkService.CreateFileLinkAsync(fileMetadata.Id, createdBy, sasUri, linkRequest);
 
             return new ObjectResult(new
@@ -158,13 +176,31 @@ public class UploadFunction
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "api/shorten")] HttpRequest req)
     {
         if (!_currentUser.IsAuthenticated) return new UnauthorizedResult();
-        if (!_currentUser.IsAuthorized()) return new StatusCodeResult(StatusCodes.Status403Forbidden);
+        // Allow users with "user" scope OR apps with "links:on_behalf" scope
+        if (!_currentUser.IsAuthorized("user") && !_currentUser.IsAuthorized("links:on_behalf")) 
+            return new StatusCodeResult(StatusCodes.Status403Forbidden);
 
         var body = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonSerializer.Deserialize<JsonElement>(body);
 
         var longUrl = data.TryGetProperty("longUrl", out var lurl) ? lurl.GetString() : null;
-        var createdBy = _currentUser.UserId.ToString();
+        
+        // On-behalf-of logic
+        var onBehalfOfUserId = data.TryGetProperty("onBehalfOfUserId", out var obo) ? obo.GetString() : null;
+        var createdBy = _currentUser.PrincipalId;
+
+        if (!string.IsNullOrEmpty(onBehalfOfUserId))
+        {
+            if (_currentUser.IsAuthorized("links:on_behalf"))
+            {
+                createdBy = onBehalfOfUserId;
+            }
+            else
+            {
+                _logger.LogWarning("Principal {Id} attempted on-behalf-of link creation without scope.", _currentUser.PrincipalId);
+                return new StatusCodeResult(StatusCodes.Status403Forbidden);
+            }
+        }
 
         var customShortCode = data.TryGetProperty("customShortCode", out var csc) ? csc.GetString() : null;
         var title = data.TryGetProperty("title", out var t) ? t.GetString() : null;
@@ -193,8 +229,8 @@ public class UploadFunction
 
         try
         {
-            var linkRequest = new CreateLinkRequest(customShortCode, title, description, iconUrl, imageUrl, siteName, themeColor);
-            var link = await _linkService.CreateUrlLinkAsync(longUrl, createdBy ?? "anonymous", linkRequest);
+            var linkRequest = new CreateLinkRequest(customShortCode, title, description, iconUrl, imageUrl, siteName, themeColor, ClientId: _currentUser.ClientId);
+            var link = await _linkService.CreateUrlLinkAsync(longUrl, createdBy, linkRequest);
 
             return new OkObjectResult(new { shortCode = link.ShortCode });
         }
@@ -209,14 +245,31 @@ public class UploadFunction
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "api/files/{fileId}/links")] HttpRequest req,
         string fileId)
     {
-        if (!_currentUser.IsAuthenticated) return new UnauthorizedResult();
-        if (!_currentUser.IsAuthorized()) return new StatusCodeResult(StatusCodes.Status403Forbidden);
+        // Allow users with "user" scope OR apps with "links:on_behalf" scope
+        if (!_currentUser.IsAuthorized("user") && !_currentUser.IsAuthorized("links:on_behalf")) 
+            return new StatusCodeResult(StatusCodes.Status403Forbidden);
 
         var body = await new StreamReader(req.Body).ReadToEndAsync();
         var data = string.IsNullOrWhiteSpace(body) ? default : JsonSerializer.Deserialize<JsonElement>(body);
 
         var linkTierRaw = data.ValueKind == JsonValueKind.Object && data.TryGetProperty("linkTier", out var lt) ? lt.GetString() : "OneHour";
-        var createdBy = _currentUser.UserId.ToString();
+        
+        // On-behalf-of logic
+        var onBehalfOfUserId = data.ValueKind == JsonValueKind.Object && data.TryGetProperty("onBehalfOfUserId", out var obo) ? obo.GetString() : null;
+        var createdBy = _currentUser.PrincipalId;
+
+        if (!string.IsNullOrEmpty(onBehalfOfUserId))
+        {
+            if (_currentUser.IsAuthorized("links:on_behalf"))
+            {
+                createdBy = onBehalfOfUserId;
+            }
+            else
+            {
+                _logger.LogWarning("Principal {Id} attempted on-behalf-of file link creation without scope.", _currentUser.PrincipalId);
+                return new StatusCodeResult(StatusCodes.Status403Forbidden);
+            }
+        }
 
         var customShortCode = data.ValueKind == JsonValueKind.Object && data.TryGetProperty("customShortCode", out var csc) ? csc.GetString() : null;
         var title = data.ValueKind == JsonValueKind.Object && data.TryGetProperty("title", out var t) ? t.GetString() : null;
@@ -243,7 +296,7 @@ public class UploadFunction
         try
         {
             var sasUri = await _fileService.GenerateSasTokenAsync(fileMetadata.BlobName, linkExpiry);
-            var linkRequest = new CreateLinkRequest(customShortCode, title, description, iconUrl, imageUrl, siteName, themeColor, linkExpiry);
+            var linkRequest = new CreateLinkRequest(customShortCode, title, description, iconUrl, imageUrl, siteName, themeColor, linkExpiry, ClientId: _currentUser.ClientId);
             var link = await _linkService.CreateFileLinkAsync(fileMetadata.Id, createdBy, sasUri, linkRequest);
 
             return new ObjectResult(new
@@ -266,7 +319,7 @@ public class UploadFunction
         if (!_currentUser.IsAuthenticated) return new UnauthorizedResult();
         if (!_currentUser.IsAuthorized()) return new StatusCodeResult(StatusCodes.Status403Forbidden);
 
-        var userId = _currentUser.UserId.ToString();
+        var userId = _currentUser.PrincipalId;
 
         var links = await _linkService.GetLinksByUserAsync(userId!);
         var files = await _fileService.GetFilesByUserAsync(userId!);
@@ -282,7 +335,7 @@ public class UploadFunction
         if (!_currentUser.IsAuthenticated) return new UnauthorizedResult();
         if (!_currentUser.IsAuthorized()) return new StatusCodeResult(StatusCodes.Status403Forbidden);
 
-        var userId = _currentUser.UserId.ToString();
+        var userId = _currentUser.PrincipalId;
 
         var deleted = await _linkService.DeleteLinkAsync(shortCode, userId);
         if (!deleted)

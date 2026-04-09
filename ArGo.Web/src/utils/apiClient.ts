@@ -1,77 +1,19 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
-import dayjs from 'dayjs';
-import { getUserManager } from '../auth/userManager';
-
-// --- Token Management ---
-let isRefreshing = false;
-let failedQueue: any[] = [];
-
-const processQueue = (error: any, token: string | null = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
-    }
-  });
-  failedQueue = [];
-};
-
-const decodeJwt = (token: string) => {
-  try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
-    return JSON.parse(jsonPayload);
-  } catch (e) {
-    return null;
-  }
-};
+import { getUserManager } from '@adolf94/ar-auth-client';
 
 const getValidToken = async (): Promise<string | null> => {
-  const accessToken = window.sessionStorage.getItem('access_token');
-
-  // Return current token if it's still valid (>1 min remaining)
-  if (accessToken) {
-    const decoded = decodeJwt(accessToken);
-    if (decoded?.exp) {
-      const isExpired = dayjs().add(1, 'minute').isAfter(dayjs(decoded.exp * 1000));
-      if (!isExpired) return accessToken;
-    }
-  }
-
-  // Token is expired or missing — attempt silent refresh via oidc-client-ts
-  if (isRefreshing) {
-    return new Promise((resolve, reject) => {
-      failedQueue.push({ resolve, reject });
-    });
-  }
-
-  isRefreshing = true;
   try {
-    const oidcUser = await getUserManager().signinSilent();
-    if (oidcUser) {
-      window.sessionStorage.setItem('access_token', oidcUser.access_token);
-      if (oidcUser.refresh_token) {
-        window.localStorage.setItem('refresh_token', oidcUser.refresh_token);
-      }
-      processQueue(null, oidcUser.access_token);
-      return oidcUser.access_token;
+    const user = await getUserManager().getUser();
+    if (user && !user.expired) {
+      return user.access_token;
     }
-    processQueue(null, null);
-    return null;
+
+    // Try silent refresh if expired or missing
+    const refreshedUser = await getUserManager().signinSilent();
+    return refreshedUser?.access_token || null;
   } catch (err) {
-    processQueue(err, null);
-    // Clear tokens on failed refresh — user will need to log in again
-    window.sessionStorage.removeItem('access_token');
-    window.localStorage.removeItem('refresh_token');
-    window.localStorage.removeItem('id_token');
-    window.localStorage.removeItem('argo_user');
+    console.error('Failed to get valid token:', err);
     return null;
-  } finally {
-    isRefreshing = false;
   }
 };
 

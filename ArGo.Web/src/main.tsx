@@ -9,7 +9,6 @@ import './index.css'
 
 import { createRouter, RouterProvider } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
-import { getUserManager } from './auth/userManager'
 
 // Register router types for type safety
 declare module '@tanstack/react-router' {
@@ -18,26 +17,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
-// If this page was opened as a popup for the OIDC flow, handle the callback
-// and stop — the popup will close itself after posting the result to the opener.
-if (window.opener && window.location.search.includes('code=')) {
-  getUserManager().signinPopupCallback().catch((err) => {
-    console.error('Popup callback error:', err);
-  });
-} else {
-  const router = createRouter({ routeTree })
-  const queryClient = new QueryClient()
+const router = createRouter({ routeTree })
+const queryClient = new QueryClient()
 
-  ReactDOM.createRoot(document.getElementById('app')!).render(
-    <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider theme={theme}>
-          <CssBaseline />
-          <AuthProvider>
-            <RouterProvider router={router} />
-          </AuthProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    </React.StrictMode>,
-  )
-}
+ReactDOM.createRoot(document.getElementById('app')!).render(
+  <React.StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <AuthProvider>
+          <RouterProvider router={router} />
+        </AuthProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  </React.StrictMode>,
+)

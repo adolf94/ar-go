@@ -34,4 +34,5 @@ public class LinkMetadata
     public DateTime? ExpirationUtc { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public string CreatedBy { get; set; } = string.Empty;
+    public string? ClientId { get; set; }
 }

@@ -58,19 +58,36 @@ namespace ArGo.Utilities
 
                         if (principal != null)
                         {
-                            var userIdStr = principal.Claims.FirstOrDefault(e => e.Type == ClaimTypes.NameIdentifier || e.Type == "sub")?.Value;
-                            if (!string.IsNullOrEmpty(userIdStr))
+                            var sub = principal.Claims.FirstOrDefault(e => e.Type == ClaimTypes.NameIdentifier || e.Type == "sub")?.Value;
+                            var clientId = principal.Claims.FirstOrDefault(e => e.Type == "client_id")?.Value;
+                            var grantType = principal.Claims.FirstOrDefault(e => e.Type == "grant_type")?.Value;
+
+                            if (!string.IsNullOrEmpty(sub))
                             {
                                 httpContext.User = principal;
-                                
-                                if (Guid.TryParse(userIdStr, out var userIdGuid))
+                                _user.IsAuthenticated = true;
+                                _user.ClientId = clientId ?? "";
+
+                                if (Guid.TryParse(sub, out var userIdGuid))
                                 {
                                     _user.UserId = userIdGuid;
+                                    _user.PrincipalType = PrincipalType.User;
+                                }
+                                else
+                                {
+                                    // If sub is not a GUID, it's likely an APP (client_credentials)
+                                    _user.PrincipalType = PrincipalType.App;
+                                    _user.App = sub;
+                                }
+
+                                // Explicit check for grant_type if present
+                                if (grantType == "client_credentials")
+                                {
+                                    _user.PrincipalType = PrincipalType.App;
                                 }
 
                                 _user.Name = principal.FindFirstValue(ClaimTypes.Name) ?? principal.FindFirstValue("name") ?? "";
                                 _user.EmailAddress = principal.FindFirstValue(ClaimTypes.Email) ?? principal.FindFirstValue("email") ?? "";
-                                _user.IsAuthenticated = true;
 
                                 _user.Roles = principal.Claims.Where(e => e.Type == ClaimTypes.Role || e.Type == "role")
                                                 .Where(e => e.Value.StartsWith("api://")).Select(e => e.Value).ToArray();
