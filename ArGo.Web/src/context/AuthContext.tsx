@@ -21,11 +21,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 export const useAuth = () => {
   const auth = useBaseAuth();
   
-  // Return the standard interface expected by the app
+  const customHasScope = (scope: string) => {
+    if (!auth.user) return false;
+    const target = scope.toLowerCase();
+
+    // Check if the user has the scope, stripping audience/client prefixes for comparison
+    const match = (s: string) => {
+      const sLower = s.toLowerCase();
+      // Remove any audience prefix like api://ar-go-api/ or api://ar-go-web/
+      const cleanScope = sLower.replace(/^api:\/\/[^/]+\//, '');
+      return cleanScope === target;
+    };
+
+    const inScopes = auth.user.scopes?.some(match) ?? false;
+    const inRoles = auth.user.roles?.some(match) ?? false;
+
+    return inScopes || inRoles;
+  };
+
   return {
     ...auth,
-    // Add any ar-go specific helpers if needed beyond what's in the base hook
-    // The base hook already provides: user, login, logout, isAuthenticated, isLoading, hasScope, getAccessToken
-    accessToken: (auth as any).accessToken, // The library uses state for this too
+    hasScope: customHasScope,
+    accessToken: (auth as any).accessToken,
   };
 };
