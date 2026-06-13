@@ -8,4 +8,5 @@ public interface IFileService
     Task<string> GenerateSasTokenAsync(string blobName, DateTime linkExpirationUtc);
     Task<FileMetadata?> GetFileMetadataAsync(string fileId);
     Task<List<FileMetadata>> GetFilesByUserAsync(string userId);
+    Task UpdateFileMetadataAsync(FileMetadata fileMetadata);
 }

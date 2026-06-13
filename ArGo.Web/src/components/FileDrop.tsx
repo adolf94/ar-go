@@ -17,7 +17,11 @@ const storageTiers = [
 const linkTiers = [
   { value: 'FifteenMinutes', label: '15 Minutes' },
   { value: 'OneHour', label: '1 Hour' },
+  { value: 'SixHours', label: '6 Hours' },
   { value: 'OneDay', label: '1 Day' },
+  { value: 'SevenDays', label: '7 Days' },
+  { value: 'OneMonth', label: '1 Month' },
+  { value: 'Permanent', label: 'Permanent' },
 ];
 
 import { useAuth } from '../context/AuthContext';
@@ -42,6 +46,9 @@ export const FileDrop = () => {
   const mutation = useMutation({
     mutationFn: () => uploadFile(file!, storageTier, linkTier, user?.email || 'anonymous', customShortCode, title, description, iconUrl, imageUrl, siteName, themeColor),
     onSuccess: (data) => {
+      console.log("DEBUG: Upload success data =", data);
+      console.log("DEBUG: storageExpiresAt =", new Date(data.storageExpiresAt).toLocaleString());
+      console.log("DEBUG: linkExpiresAt =", new Date(data.linkExpiresAt).toLocaleString());
       const link = `${window.location.host}/${data.shortCode}`;
       setUploadResult({
         fileId: data.fileId,

@@ -10,7 +10,11 @@ public enum LinkTier
 {
     FifteenMinutes,
     OneHour,
-    OneDay
+    SixHours,
+    OneDay,
+    SevenDays,
+    OneMonth,
+    Permanent
 }
 
 public enum StorageTier

@@ -93,4 +93,10 @@ public class FileService : IFileService
             .OrderByDescending(f => f.CreatedAt)
             .ToListAsync();
     }
+
+    public async Task UpdateFileMetadataAsync(FileMetadata fileMetadata)
+    {
+        _db.FileMetadatas.Update(fileMetadata);
+        await _db.SaveChangesAsync();
+    }
 }

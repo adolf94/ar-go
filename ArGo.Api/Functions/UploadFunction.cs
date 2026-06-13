@@ -118,13 +118,23 @@ public class UploadFunction
         var siteName = (string?)req.Query["siteName"];
         var themeColor = (string?)req.Query["themeColor"];
 
+        _logger.LogInformation("DEBUG UploadFunction: storageTierRaw='{storageTierRaw}', linkTierRaw='{linkTierRaw}'", storageTierRaw, linkTierRaw);
+
         if (!Enum.TryParse<StorageTier>(storageTierRaw, out var storageTier))
             storageTier = StorageTier.OneDay;
         if (!Enum.TryParse<LinkTier>(linkTierRaw, out var linkTier))
             linkTier = LinkTier.OneHour;
 
+        _logger.LogInformation("DEBUG UploadFunction: parsed storageTier={storageTier}, parsed linkTier={linkTier}", storageTier, linkTier);
+
         var storageExpiry = _retentionService.CalculateStorageExpiration(storageTier);
         var linkExpiry = _retentionService.CalculateLinkExpiration(linkTier);
+
+        if (storageExpiry < linkExpiry)
+        {
+            storageExpiry = linkExpiry;
+            _logger.LogInformation("Extended storage expiry to match link expiry: {StorageExpiry}", storageExpiry);
+        }
 
         try
         {
@@ -288,6 +298,13 @@ public class UploadFunction
         if (fileMetadata == null)
         {
             return new NotFoundResult();
+        }
+
+        if (linkExpiry > fileMetadata.StorageExpirationUtc)
+        {
+            fileMetadata.StorageExpirationUtc = linkExpiry;
+            await _fileService.UpdateFileMetadataAsync(fileMetadata);
+            _logger.LogInformation("Extended file {FileId} storage expiry to match new link expiry: {StorageExpiry}", fileId, linkExpiry);
         }
 
         // Default title to FileName if not provided

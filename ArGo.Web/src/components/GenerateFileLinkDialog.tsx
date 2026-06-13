@@ -105,10 +105,12 @@ export const GenerateFileLinkDialog = ({ open, onClose, file, userId }: Generate
               onChange={(e) => setLinkTier(e.target.value)}
               disabled={!!generatedLink}
             >
+              <MenuItem value="FifteenMinutes">15 Minutes</MenuItem>
               <MenuItem value="OneHour">1 Hour</MenuItem>
               <MenuItem value="SixHours">6 Hours</MenuItem>
               <MenuItem value="OneDay">1 Day</MenuItem>
               <MenuItem value="SevenDays">7 Days</MenuItem>
+              <MenuItem value="OneMonth">1 Month</MenuItem>
               <MenuItem value="Permanent">Permanent</MenuItem>
             </Select>
           </FormControl>

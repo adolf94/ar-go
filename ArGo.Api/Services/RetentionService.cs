@@ -9,7 +9,11 @@ public class RetentionService : IRetentionService
         {
             LinkTier.FifteenMinutes => DateTime.UtcNow.AddMinutes(15),
             LinkTier.OneHour        => DateTime.UtcNow.AddHours(1),
+            LinkTier.SixHours       => DateTime.UtcNow.AddHours(6),
             LinkTier.OneDay         => DateTime.UtcNow.AddDays(1),
+            LinkTier.SevenDays      => DateTime.UtcNow.AddDays(7),
+            LinkTier.OneMonth       => DateTime.UtcNow.AddMonths(1),
+            LinkTier.Permanent      => DateTime.UtcNow.AddYears(100),
             _ => throw new ArgumentOutOfRangeException(nameof(tier))
         };
 
