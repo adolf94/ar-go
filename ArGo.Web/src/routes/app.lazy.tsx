@@ -14,11 +14,11 @@ function AppLayout() {
   const navigate = useNavigate();
   const routerState = useRouterState();
 
-  const canUpload = hasScope('files:create');
+  const canUpload = hasScope('api://ar-go-api/files:create');
 
   // Define full tab list
   const allTabs = [
-    { path: '/app/file-drop', label: 'File Drop', icon: <CloudUpload />, requiredScope: 'files:create' },
+    { path: '/app/file-drop', label: 'File Drop', icon: <CloudUpload />, requiredScope: 'api://ar-go-api/files:create' },
     { path: '/app/url-shortener', label: 'Shorten URL', icon: <LinkIcon /> },
     { path: '/app/dashboard', label: 'My Items', icon: <Dashboard /> }
   ];
